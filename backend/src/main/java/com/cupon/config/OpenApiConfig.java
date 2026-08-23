@@ -19,7 +19,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Cupon API")
-                        .description("API para la plataforma marketplace de promociones para restaurantes")
+                        .description("API para la plataforma de directorio y administración de promociones para restaurantes")
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("Cupon Team")))

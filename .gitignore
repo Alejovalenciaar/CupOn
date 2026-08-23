@@ -1,6 +1,5 @@
-# === Backend (Gradle / Java) ===
-backend/build/
-backend/.gradle/
+# === Backend (Maven / Java) ===
+backend/target/
 backend/bin/
 backend/out/
 *.class

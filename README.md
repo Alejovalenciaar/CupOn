@@ -1,6 +1,6 @@
-# 🎟️ Cupon — Marketplace de Promociones para Restaurantes
+# 🎟️ Cupon — Directorio y Administración de Promociones para Restaurantes
 
-Plataforma web donde los **restaurantes** publican promociones y cupones de descuento, los **clientes** las descubren, filtran y guardan como favoritas, y los **administradores** gestionan la aprobación de restaurantes y moderan el contenido.
+Plataforma web de descubrimiento y gestión de promociones. Los **restaurantes** publican de forma directa sus promociones y cupones de descuento (sin necesidad de aprobación previa por publicación), los **clientes** las descubren, filtran y guardan como favoritas, y el **super administrador** gestiona la aprobación inicial de perfiles de restaurantes y realiza una post-moderación del contenido ya publicado para asegurar el cumplimiento del reglamento. La plataforma es informativa y no procesa transacciones, pedidos ni ventas de ningún tipo.
 
 ---
 
@@ -8,7 +8,7 @@ Plataforma web donde los **restaurantes** publican promociones y cupones de desc
 
 | Capa | Tecnología |
 |------|-----------|
-| **Backend** | Java 21 (LTS) · Spring Boot 4.1 · Spring Security · Spring Data JPA · Spring Data Redis |
+| **Backend** | Java 21 (LTS) · Spring Boot 3.4.3 · Maven · Spring Security · Spring Data JPA · Spring Data Redis |
 | **Base de Datos** | PostgreSQL 16 · Flyway (migraciones) |
 | **Cache** | Redis 7 (Spring Cache + RedisTemplate) |
 | **Autenticación** | JWT (jjwt 0.12.x) · BCrypt |
@@ -76,7 +76,7 @@ docker compose up -d db redis
 
 # 2. Backend
 cd backend
-./gradlew bootRun
+./mvnw spring-boot:run
 
 # 3. Frontend (en otra terminal)
 cd frontend
@@ -149,7 +149,7 @@ cupon/
 ├── .env.example
 ├── docker-compose.yml
 ├── backend/
-│   ├── build.gradle.kts
+│   ├── pom.xml
 │   ├── Dockerfile
 │   └── src/main/java/com/cupon/
 │       ├── config/

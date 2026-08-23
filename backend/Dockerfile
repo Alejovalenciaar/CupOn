@@ -1,12 +1,11 @@
-# Stage 1: Build with Gradle
-FROM gradle:8-jdk21 AS builder
+# Stage 1: Build with Maven
+FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
-COPY build.gradle.kts settings.gradle.kts ./
-COPY gradle ./gradle
+COPY pom.xml ./
 # Download dependencies first (cached layer)
-RUN gradle dependencies --no-daemon || true
+RUN mvn dependency:go-offline -B
 COPY src ./src
-RUN gradle bootJar --no-daemon -x test
+RUN mvn package -DskipTests -B
 
 # Stage 2: Run with lightweight JRE
 FROM eclipse-temurin:21-jre-alpine
@@ -16,7 +15,7 @@ WORKDIR /app
 RUN addgroup -S cupon && adduser -S cupon -G cupon
 USER cupon
 
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8080
 

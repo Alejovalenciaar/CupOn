@@ -2,17 +2,17 @@ services:
   # --- PostgreSQL ---
   db:
     image: postgres:16-alpine
-    container_name: cupon-db
+    container_name: cupon_db
     environment:
-      POSTGRES_DB: ${DB_NAME:-cupon_db}
-      POSTGRES_USER: ${DB_USER:-cupon}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-cupon123}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cupon} -d ${DB_NAME:-cupon_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${DB_NAME}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,9 +43,9 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-cupon_db}
-      DB_USER: ${DB_USER:-cupon}
-      DB_PASSWORD: ${DB_PASSWORD:-cupon123}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-bXktc3VwZXItc2VjcmV0LWtleS1mb3ItZGV2ZWxvcG1lbnQtb25seS1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
