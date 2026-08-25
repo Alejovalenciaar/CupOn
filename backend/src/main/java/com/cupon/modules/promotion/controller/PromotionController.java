@@ -6,6 +6,7 @@ import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.service.PromotionService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,9 @@ public class PromotionController {
 
     @GetMapping
     @Operation(summary = "Listar promociones activas (público)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado obtenido exitosamente")
+    })
     public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getAll(
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -45,6 +49,10 @@ public class PromotionController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtener detalle de una promoción (público)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Promoción encontrada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada")
+    })
     public ResponseEntity<ApiResponse<PromotionResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(promotionService.getPromotionById(id)));
     }
@@ -52,6 +60,12 @@ public class PromotionController {
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Crear una promoción (restaurante)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Promoción creada exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de la promoción inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante")
+    })
     public ResponseEntity<ApiResponse<PromotionResponse>> create(
             Authentication authentication,
             @Valid @RequestBody CreatePromotionRequest request) {
@@ -64,6 +78,13 @@ public class PromotionController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Actualizar una promoción (restaurante)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Promoción actualizada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de la promoción inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "No es dueño de la promoción o no tiene rol de restaurante"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada")
+    })
     public ResponseEntity<ApiResponse<PromotionResponse>> update(
             Authentication authentication,
             @PathVariable UUID id,
@@ -76,6 +97,12 @@ public class PromotionController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Eliminar una promoción (restaurante)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Promoción eliminada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "No es dueño de la promoción o no tiene rol de restaurante"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada")
+    })
     public ResponseEntity<ApiResponse<Void>> delete(
             Authentication authentication,
             @PathVariable UUID id) {
@@ -87,6 +114,12 @@ public class PromotionController {
     @PostMapping("/{id}/favorite")
     @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
     @Operation(summary = "Marcar/desmarcar como favorito (cliente)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Favorito actualizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de cliente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada")
+    })
     public ResponseEntity<ApiResponse<Void>> toggleFavorite(
             Authentication authentication,
             @PathVariable UUID id) {
@@ -98,6 +131,11 @@ public class PromotionController {
     @GetMapping("/favorites")
     @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
     @Operation(summary = "Listar mis promociones favoritas (cliente)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado obtenido exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de cliente")
+    })
     public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getMyFavorites(
             Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -108,6 +146,11 @@ public class PromotionController {
     @GetMapping("/mine")
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Listar mis promociones (restaurante)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado obtenido exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante")
+    })
     public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getMyPromotions(
             Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {

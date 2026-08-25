@@ -166,7 +166,43 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Escaneo de vulnerabilidades conocidas (CVE) en dependencias.
+             No se ejecuta en el build normal (descarga/actualiza la base de datos NVD,
+             puede tardar varios minutos en la primera ejecución y requiere red).
+             Uso: mvn verify -Psecurity-scan
+             Recomendado: exportar NVD_API_KEY (https://nvd.nist.gov/developers/request-an-api-key)
+             y pasarla con -Dnvd.api.key=%NVD_API_KEY% para evitar el rate-limit del NVD. -->
+        <profile>
+            <id>security-scan</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>12.1.0</version>
+                        <configuration>
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                            </formats>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

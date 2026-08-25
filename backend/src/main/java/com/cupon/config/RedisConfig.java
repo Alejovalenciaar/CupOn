@@ -1,5 +1,7 @@
 package com.cupon.config;
 
+import java.time.Duration;
+
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -11,13 +13,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.time.Duration;
-
 @Configuration
 @EnableCaching
 public class RedisConfig {
 
-    @SuppressWarnings("deprecation")
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -34,7 +33,6 @@ public class RedisConfig {
         return template;
     }
 
-    @SuppressWarnings("deprecation")
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         var jsonSerializer =

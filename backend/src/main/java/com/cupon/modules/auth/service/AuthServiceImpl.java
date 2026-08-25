@@ -1,7 +1,11 @@
 package com.cupon.modules.auth.service;
 
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cupon.common.exception.DuplicateResourceException;
-import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.auth.dto.AuthResponse;
 import com.cupon.modules.auth.dto.LoginRequest;
 import com.cupon.modules.auth.dto.RegisterClientRequest;
@@ -13,11 +17,8 @@ import com.cupon.modules.user.entity.User;
 import com.cupon.modules.user.repository.ClientProfileRepository;
 import com.cupon.modules.user.repository.RestaurantProfileRepository;
 import com.cupon.modules.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

@@ -7,6 +7,7 @@ import com.cupon.modules.auth.dto.RegisterClientRequest;
 import com.cupon.modules.auth.dto.RegisterRestaurantRequest;
 import com.cupon.modules.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,11 @@ public class AuthController {
 
     @PostMapping("/register/client")
     @Operation(summary = "Registrar un nuevo cliente")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Cliente registrado exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de registro inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "El correo ya está registrado")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> registerClient(
             @Valid @RequestBody RegisterClientRequest request) {
         AuthResponse response = authService.registerClient(request);
@@ -37,6 +43,11 @@ public class AuthController {
 
     @PostMapping("/register/restaurant")
     @Operation(summary = "Registrar un nuevo restaurante")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Restaurante registrado exitosamente (pendiente de aprobación)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de registro inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "El correo ya está registrado")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> registerRestaurant(
             @Valid @RequestBody RegisterRestaurantRequest request) {
         AuthResponse response = authService.registerRestaurant(request);
@@ -47,6 +58,11 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login exitoso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos de login inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Credenciales inválidas o cuenta deshabilitada")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
