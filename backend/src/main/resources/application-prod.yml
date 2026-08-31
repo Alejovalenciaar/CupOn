@@ -1,0 +1,7 @@
+# --- Perfil de producción ---
+# Reduce el nivel de logging para no filtrar parámetros SQL ni detalles internos.
+logging:
+  level:
+    com.cupon: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
