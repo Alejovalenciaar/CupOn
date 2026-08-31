@@ -24,3 +24,6 @@ jobs:
 
       - name: Build con Maven
         run: ./mvnw -B clean compile
+
+      - name: Ejecutar pruebas unitarias
+        run: ./mvnw test
