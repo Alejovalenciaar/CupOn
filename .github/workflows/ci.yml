@@ -27,3 +27,12 @@ jobs:
 
       - name: Ejecutar pruebas unitarias
         run: ./mvnw test
+
+      - name: Reporte de cobertura JaCoCo
+        run: ./mvnw jacoco:report
+
+      - name: Publicar reporte como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-jacoco
+          path: backend/target/site/jacoco
