@@ -1,0 +1,26 @@
+name: CI Pipeline Spring Boot
+
+on:
+  push:
+    branches: [ main, develop, Alejo ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build con Maven
+        run: ./mvnw -B clean compile

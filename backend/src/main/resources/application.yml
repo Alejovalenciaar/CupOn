@@ -9,9 +9,9 @@ spring:
 
   # --- DataSource (PostgreSQL) ---
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:cupon_db}
-    username: ${DB_USER:cupon}
-    password: ${DB_PASSWORD:cupon123}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRESS_DB_CUPON:cupon_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -41,8 +41,8 @@ spring:
 # --- JWT (custom properties) ---
 app:
   jwt:
-    secret: ${JWT_SECRET}
-    expiration: ${JWT_EXPIRATION:86400000}
+    secret: ${JWT_SECRET_CUPON}
+    expiration: ${JWT_EXPIRATION_CUPON:86400000}
 
 # --- OpenAPI / Swagger ---
 springdoc:
