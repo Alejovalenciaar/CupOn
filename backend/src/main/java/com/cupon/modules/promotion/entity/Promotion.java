@@ -99,4 +99,20 @@ public class Promotion extends BaseEntity {
     @Column(name = "day_of_week", length = 20)
     @Builder.Default
     private Set<DayOfWeek> daysOfWeek = new HashSet<>();
+
+    /**
+     * Determina si el instante dado cae dentro del período de vigencia (inicio y fin inclusive).
+     * Punto único de comparación temporal para no duplicar esta lógica en distintas capas.
+     */
+    public boolean isWithinSchedule(LocalDateTime reference) {
+        return !reference.isBefore(startDate) && !reference.isAfter(endDate);
+    }
+
+    public boolean isCurrentlyActive(LocalDateTime reference) {
+        return status == PromotionStatus.ACTIVE && isWithinSchedule(reference);
+    }
+
+    public boolean isCurrentlyActive() {
+        return isCurrentlyActive(LocalDateTime.now());
+    }
 }

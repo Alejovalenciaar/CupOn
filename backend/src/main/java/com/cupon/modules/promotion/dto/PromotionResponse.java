@@ -27,6 +27,7 @@ public record PromotionResponse(
         UUID restaurantId,
         Set<String> categories,
         LocalDateTime createdAt,
-        Set<DayOfWeek> daysOfWeek
+        Set<DayOfWeek> daysOfWeek,
+        boolean currentlyActive
 ) {
 }

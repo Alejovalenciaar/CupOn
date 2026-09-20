@@ -322,6 +322,6 @@ class PromotionServiceImplTest {
                 promotion.getStartDate(), promotion.getEndDate(), promotion.getMaxRedemptions(),
                 promotion.getCurrentRedemptions(), promotion.getStatus(), promotion.getImageUrl(),
                 promotion.getRestaurantProfile().getBusinessName(), promotion.getRestaurantProfile().getId(),
-                Set.of(), promotion.getCreatedAt(), Set.of());
+                Set.of(), promotion.getCreatedAt(), Set.of(), promotion.isCurrentlyActive());
     }
 }

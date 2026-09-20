@@ -16,6 +16,7 @@ public interface PromotionMapper {
     @Mapping(target = "restaurantName", source = "restaurantProfile.businessName")
     @Mapping(target = "restaurantId", source = "restaurantProfile.id")
     @Mapping(target = "categories", source = "categories", qualifiedByName = "categoriesToNames")
+    @Mapping(target = "currentlyActive", expression = "java(promotion.isCurrentlyActive())")
     PromotionResponse toResponse(Promotion promotion);
 
     @Named("categoriesToNames")

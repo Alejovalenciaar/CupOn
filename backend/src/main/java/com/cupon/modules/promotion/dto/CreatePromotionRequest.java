@@ -1,6 +1,7 @@
 package com.cupon.modules.promotion.dto;
 
 import com.cupon.modules.promotion.entity.DiscountType;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
@@ -49,4 +50,8 @@ public record CreatePromotionRequest(
 
         Set<DayOfWeek> daysOfWeek
 ) {
+    @AssertTrue(message = "La fecha/hora de inicio no puede ser posterior a la fecha/hora de fin")
+    public boolean isPeriodoValido() {
+        return startDate == null || endDate == null || !startDate.isAfter(endDate);
+    }
 }

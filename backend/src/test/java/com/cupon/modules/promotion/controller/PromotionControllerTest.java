@@ -60,7 +60,7 @@ class PromotionControllerTest {
                 id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
                 100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
-                Set.of(), LocalDateTime.now(), Set.of());
+                Set.of(), LocalDateTime.now(), Set.of(), true);
     }
 
     private CreatePromotionRequest sampleRequest() {
@@ -141,6 +141,56 @@ class PromotionControllerTest {
                         .content(objectMapper.writeValueAsString(sampleRequest())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").value(id.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+    void create_conInicioPosteriorAFin_devuelve400() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 9, 25, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 9, 20, 18, 0);
+        CreatePromotionRequest request = new CreatePromotionRequest(
+                "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
+                BigDecimal.TEN, BigDecimal.ZERO, start, end, 100, null, Set.of(), Set.of());
+
+        mockMvc.perform(post("/api/v1/promotions")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+    void create_conMismaFechaYHoraDeInicioPosterior_devuelve400() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 9, 20, 18, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 9, 20, 8, 0);
+        CreatePromotionRequest request = new CreatePromotionRequest(
+                "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
+                BigDecimal.TEN, BigDecimal.ZERO, start, end, 100, null, Set.of(), Set.of());
+
+        mockMvc.perform(post("/api/v1/promotions")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+    void create_conHorarioValidoElMismoDia_devuelve201() throws Exception {
+        UUID id = UUID.randomUUID();
+        LocalDateTime start = LocalDateTime.of(2026, 9, 20, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 9, 20, 18, 0);
+        CreatePromotionRequest request = new CreatePromotionRequest(
+                "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
+                BigDecimal.TEN, BigDecimal.ZERO, start, end, 100, null, Set.of(), Set.of());
+
+        when(promotionService.createPromotion(eq("resto@cupon.com"), any()))
+                .thenReturn(samplePromotion(id));
+
+        mockMvc.perform(post("/api/v1/promotions")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
     }
 
     @Test
