@@ -46,7 +46,8 @@ public class PromotionServiceImpl implements PromotionService {
     @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #dayOfWeek + '_' + #pageable.pageNumber")
     public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
-        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek, pageable);
+        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
+                pageable);
         return PageResponse.of(page.map(promotionMapper::toResponse));
     }
 
@@ -189,5 +190,22 @@ public class PromotionServiceImpl implements PromotionService {
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", email));
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "promotions", allEntries = true)
+    public PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus newStatus) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", promotionId));
+
+        if (!promotion.getRestaurantProfile().getId().equals(restaurant.getId())) {
+            throw new AccessDeniedException("No tienes permisos para actualizar el estado de esta promoción");
+        }
+
+        promotion.setStatus(newStatus);
+        Promotion saved = promotionRepository.save(promotion);
+        return promotionMapper.toResponse(saved);
     }
 }

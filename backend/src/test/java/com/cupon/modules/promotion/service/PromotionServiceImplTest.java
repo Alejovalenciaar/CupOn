@@ -177,7 +177,8 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SATURDAY), eq(pageable)))
                 .thenReturn(page);
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY, pageable);
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY,
+                pageable);
 
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isZero();
@@ -247,8 +248,7 @@ class PromotionServiceImplTest {
         when(restaurantProfileRepository.findByUserId(otherUser.getId())).thenReturn(Optional.of(otherProfile));
         when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
 
-        assertThatThrownBy(() ->
-                promotionService.updatePromotion("otro@cupon.com", promotion.getId(), buildRequest()))
+        assertThatThrownBy(() -> promotionService.updatePromotion("otro@cupon.com", promotion.getId(), buildRequest()))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(promotionRepository, never()).save(any());
@@ -323,5 +323,63 @@ class PromotionServiceImplTest {
                 promotion.getCurrentRedemptions(), promotion.getStatus(), promotion.getImageUrl(),
                 promotion.getRestaurantProfile().getBusinessName(), promotion.getRestaurantProfile().getId(),
                 Set.of(), promotion.getCreatedAt(), Set.of());
+    }
+
+    @Test
+    void updatePromotionStatus_whenOwner_shouldUpdateStatusSuccessfully() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        Promotion promotion = buildPromotion(restaurant);
+        promotion.setStatus(PromotionStatus.DRAFT);
+        UUID promotionId = promotion.getId();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArgument(0));
+        when(promotionMapper.toResponse(any(Promotion.class))).thenReturn(mock(promotion));
+
+        PromotionResponse response = promotionService.updatePromotionStatus(userEmail, promotionId,
+                PromotionStatus.ACTIVE);
+
+        assertThat(response).isNotNull();
+        assertThat(promotion.getStatus()).isEqualTo(PromotionStatus.ACTIVE);
+        verify(promotionRepository).save(promotion);
+    }
+
+    @Test
+    void updatePromotionStatus_whenNotOwner_shouldThrowAccessDeniedException() {
+        User user = buildUser();
+        RestaurantProfile myRestaurant = buildRestaurantProfile(user);
+        myRestaurant.setId(UUID.randomUUID());
+
+        RestaurantProfile otherRestaurant = buildRestaurantProfile(user);
+        otherRestaurant.setId(UUID.randomUUID());
+
+        Promotion promotion = buildPromotion(otherRestaurant);
+        UUID promotionId = promotion.getId();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(myRestaurant));
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        assertThatThrownBy(
+                () -> promotionService.updatePromotionStatus(userEmail, promotionId, PromotionStatus.DISABLED))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("No tienes permisos");
+    }
+
+    @Test
+    void updatePromotionStatus_whenNotFound_shouldThrowResourceNotFoundException() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        UUID nonExistentId = UUID.randomUUID();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> promotionService.updatePromotionStatus(userEmail, nonExistentId, PromotionStatus.ACTIVE))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }

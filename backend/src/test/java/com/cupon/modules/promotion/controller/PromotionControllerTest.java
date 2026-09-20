@@ -6,6 +6,7 @@ import com.cupon.config.SecurityConfig;
 import com.cupon.modules.auth.service.JwtService;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
 import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.PromotionStatus;
 import com.cupon.modules.promotion.service.PromotionService;
@@ -35,122 +36,153 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 @WebMvcTest(PromotionController.class)
 @Import(SecurityConfig.class)
 class PromotionControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @MockitoBean
-    private PromotionService promotionService;
+        @MockitoBean
+        private PromotionService promotionService;
 
-    @MockitoBean
-    private JwtService jwtService;
+        @MockitoBean
+        private JwtService jwtService;
 
-    @MockitoBean
-    private UserRepository userRepository;
+        @MockitoBean
+        private UserRepository userRepository;
 
-    private PromotionResponse samplePromotion(UUID id) {
-        return new PromotionResponse(
-                id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
-                BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
-                100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
-                Set.of(), LocalDateTime.now(), Set.of());
-    }
+        private PromotionResponse samplePromotion(UUID id) {
+                return new PromotionResponse(
+                                id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
+                                BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
+                                100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
+                                Set.of(), LocalDateTime.now(), Set.of());
+        }
 
-    private CreatePromotionRequest sampleRequest() {
-        return new CreatePromotionRequest(
-                "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
-                BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
-                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
-    }
+        private CreatePromotionRequest sampleRequest() {
+                return new CreatePromotionRequest(
+                                "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
+                                BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
+                                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
+        }
 
-    @Test
-    void getAll_esPublico_devuelve200() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(promotionService.getActivePromotions(eq(null), eq(null), any()))
-                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
+        @Test
+        void getAll_esPublico_devuelve200() throws Exception {
+                UUID id = UUID.randomUUID();
+                when(promotionService.getActivePromotions(eq(null), eq(null), any()))
+                                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
 
-        mockMvc.perform(get("/api/v1/promotions"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
-    }
+                mockMvc.perform(get("/api/v1/promotions"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
+        }
 
-    @Test
-    void getAll_conFiltroDeDia_pasaElParametroAlService() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.MONDAY), any()))
-                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
+        @Test
+        void getAll_conFiltroDeDia_pasaElParametroAlService() throws Exception {
+                UUID id = UUID.randomUUID();
+                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.MONDAY), any()))
+                                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
 
-        mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "MONDAY"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
-    }
+                mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "MONDAY"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
+        }
 
-    @Test
-    void getAll_conDiaSinResultados_devuelveListaVacia() throws Exception {
-        when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.SUNDAY), any()))
-                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
+        @Test
+        void getAll_conDiaSinResultados_devuelveListaVacia() throws Exception {
+                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.SUNDAY), any()))
+                                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
 
-        mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "SUNDAY"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content").isEmpty());
-    }
+                mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "SUNDAY"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.content").isEmpty());
+        }
 
-    @Test
-    void getById_promocionInexistente_devuelve404() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(promotionService.getPromotionById(id))
-                .thenThrow(new ResourceNotFoundException("Promoción", "id", id));
+        @Test
+        void getById_promocionInexistente_devuelve404() throws Exception {
+                UUID id = UUID.randomUUID();
+                when(promotionService.getPromotionById(id))
+                                .thenThrow(new ResourceNotFoundException("Promoción", "id", id));
 
-        mockMvc.perform(get("/api/v1/promotions/{id}", id))
-                .andExpect(status().isNotFound());
-    }
+                mockMvc.perform(get("/api/v1/promotions/{id}", id))
+                                .andExpect(status().isNotFound());
+        }
 
-    @Test
-    void create_sinAutenticacion_esRechazada() throws Exception {
-        mockMvc.perform(post("/api/v1/promotions")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(sampleRequest())))
-                .andExpect(status().is4xxClientError());
-    }
+        @Test
+        void create_sinAutenticacion_esRechazada() throws Exception {
+                mockMvc.perform(post("/api/v1/promotions")
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(sampleRequest())))
+                                .andExpect(status().is4xxClientError());
+        }
 
-    @Test
-    @WithMockUser(authorities = "ROLE_CLIENTE")
-    void create_conRolIncorrecto_devuelve403() throws Exception {
-        mockMvc.perform(post("/api/v1/promotions")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(sampleRequest())))
-                .andExpect(status().isForbidden());
-    }
+        @Test
+        @WithMockUser(authorities = "ROLE_CLIENTE")
+        void create_conRolIncorrecto_devuelve403() throws Exception {
+                mockMvc.perform(post("/api/v1/promotions")
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(sampleRequest())))
+                                .andExpect(status().isForbidden());
+        }
 
-    @Test
-    @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
-    void create_conRolRestaurante_devuelve201() throws Exception {
-        UUID id = UUID.randomUUID();
-        when(promotionService.createPromotion(eq("resto@cupon.com"), any()))
-                .thenReturn(samplePromotion(id));
+        @Test
+        @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+        void create_conRolRestaurante_devuelve201() throws Exception {
+                UUID id = UUID.randomUUID();
+                when(promotionService.createPromotion(eq("resto@cupon.com"), any()))
+                                .thenReturn(samplePromotion(id));
 
-        mockMvc.perform(post("/api/v1/promotions")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(sampleRequest())))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.id").value(id.toString()));
-    }
+                mockMvc.perform(post("/api/v1/promotions")
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(sampleRequest())))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.data.id").value(id.toString()));
+        }
 
-    @Test
-    @WithMockUser(username = "otro@cupon.com", authorities = "ROLE_RESTAURANTE")
-    void delete_deOtroRestaurante_devuelve403() throws Exception {
-        UUID id = UUID.randomUUID();
-        org.mockito.Mockito.doThrow(new AccessDeniedException("No tienes permisos para eliminar esta promoción"))
-                .when(promotionService).deletePromotion(eq("otro@cupon.com"), eq(id));
+        @Test
+        @WithMockUser(username = "otro@cupon.com", authorities = "ROLE_RESTAURANTE")
+        void delete_deOtroRestaurante_devuelve403() throws Exception {
+                UUID id = UUID.randomUUID();
+                org.mockito.Mockito
+                                .doThrow(new AccessDeniedException("No tienes permisos para eliminar esta promoción"))
+                                .when(promotionService).deletePromotion(eq("otro@cupon.com"), eq(id));
 
-        mockMvc.perform(delete("/api/v1/promotions/{id}", id))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(delete("/api/v1/promotions/{id}", id))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+        void updateStatus_whenRestaurant_shouldReturn200() throws Exception {
+                UUID id = UUID.randomUUID();
+                UpdatePromotionStatusRequest request = new UpdatePromotionStatusRequest(PromotionStatus.ACTIVE);
+
+                when(promotionService.updatePromotionStatus(eq("resto@cupon.com"), eq(id), eq(PromotionStatus.ACTIVE)))
+                                .thenReturn(samplePromotion(id));
+
+                mockMvc.perform(patch("/api/v1/promotions/{id}/status", id)
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true));
+        }
+
+        @Test
+        @WithMockUser(authorities = "ROLE_CLIENTE")
+        void updateStatus_whenClientRole_shouldReturn403() throws Exception {
+                UUID id = UUID.randomUUID();
+                UpdatePromotionStatusRequest request = new UpdatePromotionStatusRequest(PromotionStatus.DISABLED);
+
+                mockMvc.perform(patch("/api/v1/promotions/{id}/status", id)
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
+
 }

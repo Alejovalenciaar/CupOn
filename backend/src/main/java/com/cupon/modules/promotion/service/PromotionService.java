@@ -3,6 +3,8 @@ package com.cupon.modules.promotion.service;
 import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.entity.PromotionStatus;
+
 import org.springframework.data.domain.Pageable;
 
 import java.time.DayOfWeek;
@@ -25,4 +27,6 @@ public interface PromotionService {
     PageResponse<PromotionResponse> getMyFavorites(String userEmail, Pageable pageable);
 
     PageResponse<PromotionResponse> getMyPromotions(String userEmail, Pageable pageable);
+
+    PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus neStatus);
 }
