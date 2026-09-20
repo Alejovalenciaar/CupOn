@@ -1,7 +1,9 @@
 package com.cupon.modules.promotion.entity;
 
 import com.cupon.common.entity.BaseEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,6 +21,7 @@ import lombok.Setter;
 import com.cupon.modules.user.entity.RestaurantProfile;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -86,4 +89,14 @@ public class Promotion extends BaseEntity {
     )
     @Builder.Default
     private Set<Category> categories = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "promotion_days",
+            joinColumns = @JoinColumn(name = "promotion_id")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day_of_week", length = 20)
+    @Builder.Default
+    private Set<DayOfWeek> daysOfWeek = new HashSet<>();
 }

@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -59,25 +60,46 @@ class PromotionControllerTest {
                 id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
                 100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
-                Set.of(), LocalDateTime.now());
+                Set.of(), LocalDateTime.now(), Set.of());
     }
 
     private CreatePromotionRequest sampleRequest() {
         return new CreatePromotionRequest(
                 "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
-                LocalDateTime.now().plusDays(5), 100, null, Set.of());
+                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
     }
 
     @Test
     void getAll_esPublico_devuelve200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(promotionService.getActivePromotions(eq(null), any()))
+        when(promotionService.getActivePromotions(eq(null), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
 
         mockMvc.perform(get("/api/v1/promotions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
+    }
+
+    @Test
+    void getAll_conFiltroDeDia_pasaElParametroAlService() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.MONDAY), any()))
+                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
+
+        mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "MONDAY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
+    }
+
+    @Test
+    void getAll_conDiaSinResultados_devuelveListaVacia() throws Exception {
+        when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.SUNDAY), any()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
+
+        mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "SUNDAY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isEmpty());
     }
 
     @Test
