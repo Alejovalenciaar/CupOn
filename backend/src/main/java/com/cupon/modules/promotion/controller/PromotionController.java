@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.DayOfWeek;
 import java.util.UUID;
 
 @RestController
@@ -43,8 +44,9 @@ public class PromotionController {
     })
     public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getAll(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) DayOfWeek dayOfWeek,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(promotionService.getActivePromotions(search, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(promotionService.getActivePromotions(search, dayOfWeek, pageable)));
     }
 
     @GetMapping("/{id}")

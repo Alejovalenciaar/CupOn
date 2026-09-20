@@ -27,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -97,36 +98,89 @@ class PromotionServiceImplTest {
         return new CreatePromotionRequest(
                 "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
-                LocalDateTime.now().plusDays(5), 100, null, Set.of());
+                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
     }
 
     @Test
-    void getActivePromotions_sinBusqueda_delegaEnFindByStatus() {
+    void getActivePromotions_sinFiltros_buscaSoloPorStatus() {
         Pageable pageable = PageRequest.of(0, 20);
         Promotion promotion = buildPromotion(buildRestaurantProfile(buildUser()));
         Page<Promotion> page = new PageImpl<>(List.of(promotion), pageable, 1);
 
-        when(promotionRepository.findByStatus(eq(PromotionStatus.ACTIVE), eq(pageable))).thenReturn(page);
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(null), eq(pageable)))
+                .thenReturn(page);
         when(promotionMapper.toResponse(any(Promotion.class))).thenReturn(mock(promotion));
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, pageable);
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, null, pageable);
 
         assertThat(result.content()).hasSize(1);
-        verify(promotionRepository, never()).searchByTitleOrDescription(any(), any(), any());
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, pageable);
     }
 
     @Test
-    void getActivePromotions_conBusqueda_delegaEnSearch() {
+    void getActivePromotions_soloTexto_pasaSearchYDejaDiaEnNull() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of());
 
-        when(promotionRepository.searchByTitleOrDescription(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("pizza", pageable);
+        promotionService.getActivePromotions("pizza", null, pageable);
 
-        verify(promotionRepository).searchByTitleOrDescription(PromotionStatus.ACTIVE, "pizza", pageable);
-        verify(promotionRepository, never()).findByStatus(any(), any());
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", null, pageable);
+    }
+
+    @Test
+    void getActivePromotions_soloDia_pasaDiaYDejaSearchEnNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Promotion> page = new PageImpl<>(List.of());
+
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.MONDAY), eq(pageable)))
+                .thenReturn(page);
+
+        promotionService.getActivePromotions(null, DayOfWeek.MONDAY, pageable);
+
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.MONDAY, pageable);
+    }
+
+    @Test
+    void getActivePromotions_textoEnBlanco_seNormalizaANull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Promotion> page = new PageImpl<>(List.of());
+
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SUNDAY), eq(pageable)))
+                .thenReturn(page);
+
+        promotionService.getActivePromotions("   ", DayOfWeek.SUNDAY, pageable);
+
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.SUNDAY, pageable);
+    }
+
+    @Test
+    void getActivePromotions_textoYDia_combinaAmbosFiltros() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Promotion> page = new PageImpl<>(List.of());
+
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(DayOfWeek.FRIDAY), eq(pageable)))
+                .thenReturn(page);
+
+        promotionService.getActivePromotions("pizza", DayOfWeek.FRIDAY, pageable);
+
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", DayOfWeek.FRIDAY, pageable);
+    }
+
+    @Test
+    void getActivePromotions_diaSinResultados_devuelvePageResponseVacio() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Promotion> page = new PageImpl<>(List.of(), pageable, 0);
+
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SATURDAY), eq(pageable)))
+                .thenReturn(page);
+
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY, pageable);
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
     }
 
     @Test
@@ -268,6 +322,6 @@ class PromotionServiceImplTest {
                 promotion.getStartDate(), promotion.getEndDate(), promotion.getMaxRedemptions(),
                 promotion.getCurrentRedemptions(), promotion.getStatus(), promotion.getImageUrl(),
                 promotion.getRestaurantProfile().getBusinessName(), promotion.getRestaurantProfile().getId(),
-                Set.of(), promotion.getCreatedAt());
+                Set.of(), promotion.getCreatedAt(), Set.of());
     }
 }

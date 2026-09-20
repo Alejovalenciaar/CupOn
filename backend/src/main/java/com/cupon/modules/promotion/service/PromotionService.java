@@ -5,11 +5,12 @@ import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import org.springframework.data.domain.Pageable;
 
+import java.time.DayOfWeek;
 import java.util.UUID;
 
 public interface PromotionService {
 
-    PageResponse<PromotionResponse> getActivePromotions(String search, Pageable pageable);
+    PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable);
 
     PromotionResponse getPromotionById(UUID id);
 

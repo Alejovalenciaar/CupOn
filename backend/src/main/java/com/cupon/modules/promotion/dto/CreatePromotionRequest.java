@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +45,8 @@ public record CreatePromotionRequest(
 
         String imageUrl,
 
-        Set<UUID> categoryIds
+        Set<UUID> categoryIds,
+
+        Set<DayOfWeek> daysOfWeek
 ) {
 }
