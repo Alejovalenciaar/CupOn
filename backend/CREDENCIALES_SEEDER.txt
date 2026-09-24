@@ -1,0 +1,119 @@
+================================================================================
+                    CUPON — INFORMACIÓN Y CREDENCIALES DEL DATA SEEDER
+================================================================================
+Este archivo contiene el resumen de todos los datos y credenciales generados
+automáticamente por DataSeeder.java al inicializar la base de datos de desarrollo.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. SUPER ADMINISTRADOR (ROLE_ADMIN)
+--------------------------------------------------------------------------------
+Acceso total al panel de administración: aprobación de comercios, métricas y moderación.
+
+  - Email:       admin@cupon.com
+  - Contraseña:  Admin123*
+  - Nombre:      Admin CupOn
+  - Rol:         ROLE_ADMIN
+  - Permisos:    Aprobar/rechazar restaurantes, suspender cuentas, eliminar
+                 promociones inapropiadas, ver métricas globales.
+
+--------------------------------------------------------------------------------
+2. RESTAURANTES APROBADOS (ROLE_RESTAURANTE) — 50 COMERCIOS
+--------------------------------------------------------------------------------
+Restaurantes ya aprobados por el administrador, activos en el catálogo público
+y cada uno con 200 promociones asignadas (Total: 10.000 promociones).
+
+  - Patrón de Email:  restaurante1@cupon.com  hasta  restaurante50@cupon.com
+  - Contraseña única: Resto123*  (para los 50 restaurantes)
+  - Rol:              ROLE_RESTAURANTE
+
+Ejemplos de cuentas para iniciar sesión:
+  * restaurante1@cupon.com  / Resto123* -> Burger House (Sede Zona T, Bogotá)
+  * restaurante2@cupon.com  / Resto123* -> Taco Chingón (Sede Usaquén, Bogotá)
+  * restaurante3@cupon.com  / Resto123* -> Sakura Sushi (Sede Chapinero, Bogotá)
+  * restaurante4@cupon.com  / Resto123* -> Bella Italia (Sede Parque 93, Bogotá)
+  * restaurante5@cupon.com  / Resto123* -> Verde Vivo Bowls (Sede Cedritos, Bogotá)
+  * restaurante6@cupon.com  / Resto123* -> Dulce Pecado Bakery (Sede El Poblado, Medellín)
+  * restaurante7@cupon.com  / Resto123* -> Fuego & Carbón BBQ (Sede Provenza, Medellín)
+  * restaurante8@cupon.com  / Resto123* -> La Cervecería Capital (Sede Laureles, Medellín)
+  * restaurante9@cupon.com  / Resto123* -> Sabor Pacífico (Sede Envigado, Medellín)
+  * restaurante10@cupon.com / Resto123* -> Parrilla del Valle (Sede Granada, Cali)
+  ... hasta restaurante50@cupon.com
+
+Ciudades cubiertas:
+  - Bogotá (Zona T, Usaquén, Chapinero, Parque 93, Cedritos)
+  - Medellín (El Poblado, Provenza, Laureles, Envigado)
+  - Cali (Granada, San Antonio, Ciudad Jardín)
+  - Barranquilla (El Prado, Villa Campestre)
+  - Cartagena (Bocagrande, Getsemaní)
+  - Bucaramanga (Cabecera)
+  - Pereira (Circunvalar)
+
+--------------------------------------------------------------------------------
+3. RESTAURANTES PENDIENTES DE APROBACIÓN (ROLE_RESTAURANTE) — 3 COMERCIOS
+--------------------------------------------------------------------------------
+Comercios en estado PENDING, ideales para probar el flujo de revisión y
+aprobación/rechazo del Super Administrador (HU07 y HU08).
+
+  1) Email:       pendiente1@cupon.com
+     Contraseña:  Resto123*
+     Comercio:    Arepas de la Esquina
+     Estado:      PENDING
+
+  2) Email:       pendiente2@cupon.com
+     Contraseña:  Resto123*
+     Comercio:    Waffles & Shakes
+     Estado:      PENDING
+
+  3) Email:       pendiente3@cupon.com
+     Contraseña:  Resto123*
+     Comercio:    Donas Artesanales
+     Estado:      PENDING
+
+--------------------------------------------------------------------------------
+4. CLIENTE DE PRUEBA (ROLE_CLIENTE)
+--------------------------------------------------------------------------------
+Usuario cliente regular para probar catálogo, filtros, favoritos y perfil.
+
+  - Email:       cliente@cupon.com
+  - Contraseña:  Cliente123*
+  - Nombre:      Alejandro Gómez
+  - Teléfono:    3159998877
+  - Rol:         ROLE_CLIENTE
+  - Funciones:   Consultar catálogo, filtrar por día de semana (HU13),
+                 buscar por restaurante (HU14), marcar favoritos (HU15),
+                 ver lista de favoritos (HU16), editar su perfil (HU11).
+
+--------------------------------------------------------------------------------
+5. RESUMEN DE PROMOCIONES GENERADAS (10.000 CUPONES)
+--------------------------------------------------------------------------------
+  - Total promociones:    10.000 (200 por cada restaurante aprobado).
+  - Códigos de cupón:     CUPON-00001  hasta  CUPON-10000 (únicos).
+  - Estados:              ~9.500 en estado ACTIVE (visibles en catálogo)
+                          ~500 en estado DISABLED (para probar HU20).
+  - Tipo de descuento:    Combinación entre porcentaje (% OFF) y monto fijo ($ COP).
+  - Compra mínima:        Desde $15.000 hasta $45.000 COP.
+  - Fechas de vigencia:   Iniciadas recientemente y válidas por 30 a 90 días.
+  - Días de la semana:    Rotación entre Lunes-Miércoles, Jueves-Viernes,
+                          Fines de Semana y Toda la Semana (para HU13).
+  - Imágenes:             Pool de 16 fotos gastronómicas en alta definición de Unsplash.
+
+--------------------------------------------------------------------------------
+6. ¿CÓMO SE EJECUTA EL SEEDER?
+--------------------------------------------------------------------------------
+El Seeder se ejecuta automáticamente al arrancar el backend en entorno local:
+
+  1. Levantar base de datos y redis:
+     docker compose up -d db redis
+
+  2. Iniciar el Backend:
+     cd backend
+     ./mvnw spring-boot:run
+
+  * Si la tabla 'users' ya tiene datos, el Seeder lo detecta e ignora la siembra
+    para evitar duplicados.
+  * Si deseas volver a sembrar todo desde cero, simplemente limpia la BD:
+     docker compose down -v
+     docker compose up -d db redis
+     ./mvnw spring-boot:run
+================================================================================
