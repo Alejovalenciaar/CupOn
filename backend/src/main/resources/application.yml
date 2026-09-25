@@ -9,9 +9,9 @@ spring:
 
   # --- DataSource (PostgreSQL) ---
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:cupon_db}
-    username: ${DB_USER:cupon}
-    password: ${DB_PASSWORD:cupon123}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRESS_DB_CUPON:cupon_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -38,11 +38,28 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  # --- Mail (SMTP) ---
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
 # --- JWT (custom properties) ---
 app:
   jwt:
-    secret: ${JWT_SECRET:my-super-secret-key-for-development-only-change-in-production-256-bits!}
-    expiration: ${JWT_EXPIRATION:86400000}
+    secret: ${JWT_SECRET_CUPON:${JWT_SECRET:}}
+    expiration: ${JWT_EXPIRATION_CUPON:${JWT_EXPIRATION:86400000}}
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
+  password-reset:
+    expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:30}
 
 # --- OpenAPI / Swagger ---
 springdoc:

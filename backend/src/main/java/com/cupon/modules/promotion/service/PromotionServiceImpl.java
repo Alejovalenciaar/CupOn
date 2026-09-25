@@ -25,6 +25,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -42,14 +43,11 @@ public class PromotionServiceImpl implements PromotionService {
     private final PromotionMapper promotionMapper;
 
     @Override
-    @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #pageable.pageNumber")
-    public PageResponse<PromotionResponse> getActivePromotions(String search, Pageable pageable) {
-        Page<Promotion> page;
-        if (search != null && !search.isBlank()) {
-            page = promotionRepository.searchByTitleOrDescription(PromotionStatus.ACTIVE, search, pageable);
-        } else {
-            page = promotionRepository.findByStatus(PromotionStatus.ACTIVE, pageable);
-        }
+    @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #dayOfWeek + '_' + #pageable.pageNumber")
+    public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable) {
+        String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
+        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
+                pageable);
         return PageResponse.of(page.map(promotionMapper::toResponse));
     }
 
@@ -86,6 +84,10 @@ public class PromotionServiceImpl implements PromotionService {
             promotion.setCategories(categories);
         }
 
+        if (request.daysOfWeek() != null) {
+            promotion.setDaysOfWeek(new HashSet<>(request.daysOfWeek()));
+        }
+
         Promotion saved = promotionRepository.save(promotion);
         return promotionMapper.toResponse(saved);
     }
@@ -116,6 +118,10 @@ public class PromotionServiceImpl implements PromotionService {
         if (request.categoryIds() != null) {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.categoryIds()));
             promotion.setCategories(categories);
+        }
+
+        if (request.daysOfWeek() != null) {
+            promotion.setDaysOfWeek(new HashSet<>(request.daysOfWeek()));
         }
 
         Promotion saved = promotionRepository.save(promotion);
@@ -184,5 +190,22 @@ public class PromotionServiceImpl implements PromotionService {
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", email));
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "promotions", allEntries = true)
+    public PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus newStatus) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", promotionId));
+
+        if (!promotion.getRestaurantProfile().getId().equals(restaurant.getId())) {
+            throw new AccessDeniedException("No tienes permisos para actualizar el estado de esta promoción");
+        }
+
+        promotion.setStatus(newStatus);
+        Promotion saved = promotionRepository.save(promotion);
+        return promotionMapper.toResponse(saved);
     }
 }

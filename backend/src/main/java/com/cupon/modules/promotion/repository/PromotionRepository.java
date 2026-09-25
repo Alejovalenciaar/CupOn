@@ -9,24 +9,26 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.DayOfWeek;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
-    Page<Promotion> findByStatus(PromotionStatus status, Pageable pageable);
-
     Page<Promotion> findByRestaurantProfileId(UUID restaurantProfileId, Pageable pageable);
 
     Optional<Promotion> findByCode(String code);
 
     @Query("SELECT p FROM Promotion p WHERE p.status = :status " +
-            "AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Promotion> searchByTitleOrDescription(@Param("status") PromotionStatus status,
-                                                @Param("search") String search,
-                                                Pageable pageable);
+            "AND (:search IS NULL " +
+            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek)")
+    Page<Promotion> search(@Param("status") PromotionStatus status,
+                            @Param("search") String search,
+                            @Param("dayOfWeek") DayOfWeek dayOfWeek,
+                            Pageable pageable);
 
     long countByStatus(PromotionStatus status);
 }

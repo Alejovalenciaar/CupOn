@@ -6,6 +6,7 @@ import com.cupon.modules.restaurant.dto.RestaurantResponse;
 import com.cupon.modules.restaurant.dto.UpdateRestaurantDto;
 import com.cupon.modules.restaurant.service.RestaurantService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,9 @@ public class RestaurantController {
 
     @GetMapping
     @Operation(summary = "Listar restaurantes aprobados (público)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado obtenido exitosamente")
+    })
     public ResponseEntity<ApiResponse<PageResponse<RestaurantResponse>>> getAll(
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(restaurantService.getApprovedRestaurants(pageable)));
@@ -40,6 +44,10 @@ public class RestaurantController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtener detalle de un restaurante (público)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Restaurante encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Restaurante no encontrado")
+    })
     public ResponseEntity<ApiResponse<RestaurantResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(restaurantService.getRestaurantById(id)));
     }
@@ -47,6 +55,13 @@ public class RestaurantController {
     @PutMapping("/me")
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Actualizar mi perfil de restaurante")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Restaurante actualizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Perfil de restaurante no encontrado")
+    })
     public ResponseEntity<ApiResponse<RestaurantResponse>> updateMyRestaurant(
             Authentication authentication,
             @Valid @RequestBody UpdateRestaurantDto request) {
