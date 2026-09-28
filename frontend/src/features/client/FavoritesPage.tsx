@@ -1,14 +1,32 @@
+/**
+ * FavoritesPage — HU 15: Mis cupones favoritos
+ * Muestra las promociones guardadas como favorito por el cliente autenticado.
+ * Si hay sesión de ROLE_CLIENTE activa, carga desde el backend.
+ * Si no hay sesión, usa localStorage como fallback.
+ */
 import { useState, useEffect } from "react";
-import { getPromotionById } from "@/api/promotionServices";
+import { getMyFavorites, toggleFavorite } from "@/api/promotionServices";
 import { Promotion } from "@/types";
 
-/**
- * FavoritesPage – HU 15
- * Muestra las promociones guardadas por el usuario (almacenadas en localStorage).
- * Permite quitarlas de favoritos directamente desde esta vista.
- */
-export default function FavoritesPage() {
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+interface FavoritesPageProps {
+  onBack?: () => void;
+}
+
+export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
+  // Detectar si hay un cliente autenticado
+  const isClient = (() => {
+    try {
+      const saved = localStorage.getItem("cupon_user");
+      if (!saved) return false;
+      const parsed = JSON.parse(saved);
+      return parsed.role === "ROLE_CLIENTE";
+    } catch {
+      return false;
+    }
+  })();
+
+  // Fallback: favoriteIds locales (para usuarios no autenticados)
+  const [localFavoriteIds, setLocalFavoriteIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("cupon_favorites");
       return saved ? JSON.parse(saved) : [];
@@ -19,50 +37,52 @@ export default function FavoritesPage() {
 
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  // Cargar los detalles de cada promoción favorita
+  // Cargar favoritos desde el backend o localStorage
   useEffect(() => {
-    if (favoriteIds.length === 0) {
-      setLoading(false);
-      setPromotions([]);
-      return;
-    }
-
     setLoading(true);
-    const fetchAll = async () => {
-      const results: Promotion[] = [];
-      const errs: string[] = [];
+    setError(null);
 
-      await Promise.allSettled(
-        favoriteIds.map(async (id) => {
-          try {
-            const promo = await getPromotionById(id);
-            results.push(promo);
-          } catch {
-            errs.push(id);
-          }
+    if (isClient) {
+      // Cargar desde el backend
+      getMyFavorites(0, 50)
+        .then((data) => {
+          setPromotions(data.content || []);
         })
-      );
-
-      setPromotions(results);
-      setErrors(errs);
+        .catch((err) => {
+          console.error("Error al cargar favoritos:", err);
+          setError("No se pudieron cargar tus favoritos. Intenta de nuevo.");
+        })
+        .finally(() => setLoading(false));
+    } else {
+      // Sin sesión: mostrar mensaje de acceso requerido
       setLoading(false);
-    };
+    }
+  }, [isClient]);
 
-    fetchAll();
-  }, [favoriteIds]);
-
-  const handleRemoveFavorite = (id: string) => {
+  const handleRemoveFavorite = async (id: string) => {
     setRemovingId(id);
-    setTimeout(() => {
-      const updated = favoriteIds.filter((fid) => fid !== id);
-      setFavoriteIds(updated);
-      localStorage.setItem("cupon_favorites", JSON.stringify(updated));
-      setPromotions((prev) => prev.filter((p) => p.id !== id));
+    try {
+      if (isClient) {
+        // Remover en el backend
+        await toggleFavorite(id);
+      } else {
+        // Remover en localStorage
+        const updated = localFavoriteIds.filter((fid) => fid !== id);
+        setLocalFavoriteIds(updated);
+        localStorage.setItem("cupon_favorites", JSON.stringify(updated));
+      }
+      // Animar salida
+      setTimeout(() => {
+        setPromotions((prev) => prev.filter((p) => p.id !== id));
+        setRemovingId(null);
+      }, 300);
+    } catch (err) {
+      console.error("Error al quitar favorito:", err);
       setRemovingId(null);
-    }, 300);
+    }
   };
 
   const handleCopyCode = (code: string) => {
@@ -78,7 +98,42 @@ export default function FavoritesPage() {
     );
   }
 
-  if (favoriteIds.length === 0) {
+  if (error) {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-danger rounded-4" role="alert">
+          ❌ {error}
+        </div>
+        <button onClick={() => onBack?.()} className="btn btn-outline-dark rounded-pill px-4 fw-semibold">
+          ← Volver al catálogo
+        </button>
+      </div>
+    );
+  }
+
+  // Usuario no autenticado como cliente
+  if (!isClient) {
+    return (
+      <div className="container py-5">
+        <div className="text-center py-5">
+          <div style={{ fontSize: 72 }}>🔒</div>
+          <h2 className="fw-bold mt-3">Inicia sesión para ver tus favoritos</h2>
+          <p className="text-muted">
+            Necesitas una cuenta de cliente para guardar y ver tus cupones favoritos.
+          </p>
+          <button
+            onClick={() => onBack?.()}
+            className="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm"
+            style={{ background: "linear-gradient(90deg, #7b2ff7, #f107a3)", border: "none" }}
+          >
+            Volver e iniciar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (promotions.length === 0) {
     return (
       <div className="container py-5">
         <div className="text-center py-5">
@@ -87,11 +142,13 @@ export default function FavoritesPage() {
           <p className="text-muted">
             Explora el catálogo y guarda los cupones que más te gusten tocando el ❤️
           </p>
-          <a href="/" className="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm"
+          <button
+            onClick={() => onBack?.()}
+            className="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm"
             style={{ background: "linear-gradient(90deg, #7b2ff7, #f107a3)", border: "none" }}
           >
             Explorar cupones
-          </a>
+          </button>
         </div>
       </div>
     );
@@ -109,16 +166,10 @@ export default function FavoritesPage() {
             {promotions.length} cupón{promotions.length !== 1 ? "es" : ""} guardado{promotions.length !== 1 ? "s" : ""}
           </small>
         </div>
-        <a href="/" className="btn btn-outline-dark rounded-pill px-4 fw-semibold">
+        <button onClick={() => onBack?.()} className="btn btn-outline-dark rounded-pill px-4 fw-semibold">
           ← Volver al catálogo
-        </a>
+        </button>
       </div>
-
-      {errors.length > 0 && (
-        <div className="alert alert-warning rounded-4 small mb-4" role="alert">
-          ⚠️ No se pudieron cargar {errors.length} cupón(es). Puede que hayan vencido o sido eliminados.
-        </div>
-      )}
 
       {/* Grid de cupones favoritos */}
       <div className="row g-4">
@@ -166,12 +217,13 @@ export default function FavoritesPage() {
                   {/* Botón quitar favorito */}
                   <button
                     onClick={() => handleRemoveFavorite(promotion.id)}
+                    disabled={!!removingId}
                     className="position-absolute bottom-0 end-0 m-2 btn btn-danger btn-sm rounded-pill px-2 py-1 shadow-sm"
                     title="Quitar de favoritos"
                     style={{ fontSize: "0.75rem" }}
                     aria-label={`Quitar ${promotion.title} de favoritos`}
                   >
-                    ❤️ Quitar
+                    {removingId === promotion.id ? "..." : "❤️ Quitar"}
                   </button>
                 </div>
 

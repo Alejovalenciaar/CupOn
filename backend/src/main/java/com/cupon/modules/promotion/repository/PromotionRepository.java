@@ -20,6 +20,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
     Optional<Promotion> findByCode(String code);
 
+    boolean existsByCode(String code);
+
     @Query("SELECT p FROM Promotion p WHERE p.status = :status " +
             "AND (CAST(:search AS string) IS NULL " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +

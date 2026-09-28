@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import RestaurantDashboard from "./features/restaurant/RestaurantDashboard";
 import AdminDashboard from "./features/admin/AdminDashboard";
+import FavoritesPage from "./features/client/FavoritesPage";
 import { getRestaurants, updateMyRestaurant, getMyRestaurant } from "./api/restaurantServices";
 import { getMyProfile, updateMyProfile } from "./api/userServices";
-import { getPromotions, getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "./api/promotionServices";
+import { getPromotions, getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, toggleFavorite, getMyFavorites } from "./api/promotionServices";
 import { registerClient, registerRestaurant, login, forgotPassword, resetPassword } from "./api/authServices";
 import {
   Restaurant,
@@ -48,6 +49,7 @@ export default function App() {
 
   // Estado para la vista de Favoritos (HU 15)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+  const [showFavoritesPage, setShowFavoritesPage] = useState<boolean>(false);
 
   // Estados para el Modal de detalle de cupón y compartir (HU 2.5)
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
@@ -262,12 +264,33 @@ export default function App() {
 
   const handleToggleFavorite = (promotionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavoriteIds((prev) => {
-      const isFav = prev.includes(promotionId);
-      const next = isFav ? prev.filter((id) => id !== promotionId) : [...prev, promotionId];
-      localStorage.setItem("cupon_favorites", JSON.stringify(next));
-      return next;
-    });
+    const isClientUser = currentUser?.role === "ROLE_CLIENTE";
+
+    if (isClientUser) {
+      // Toggle en backend y actualizar estado local optimistamente
+      setFavoriteIds((prev) => {
+        const isFav = prev.includes(promotionId);
+        const next = isFav ? prev.filter((id) => id !== promotionId) : [...prev, promotionId];
+        return next;
+      });
+      toggleFavorite(promotionId).catch((err) => {
+        // Revertir si falla
+        console.error("Error al actualizar favorito:", err);
+        setFavoriteIds((prev) => {
+          const isFav = prev.includes(promotionId);
+          const next = isFav ? prev.filter((id) => id !== promotionId) : [...prev, promotionId];
+          return next;
+        });
+      });
+    } else {
+      // Fallback localStorage para usuarios no autenticados
+      setFavoriteIds((prev) => {
+        const isFav = prev.includes(promotionId);
+        const next = isFav ? prev.filter((id) => id !== promotionId) : [...prev, promotionId];
+        localStorage.setItem("cupon_favorites", JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const handleOpenModal = (promotion: Promotion) => {
@@ -626,6 +649,15 @@ export default function App() {
         setViewMode("admin");
       } else {
         setViewMode("customer");
+        // Sincronizar favoritos desde el backend al iniciar sesión como cliente
+        getMyFavorites(0, 50)
+          .then((data) => {
+            const ids = (data.content || []).map((p) => p.id);
+            setFavoriteIds(ids);
+          })
+          .catch(() => {
+            // Si falla, conservar los locales
+          });
       }
       setIsLoginModalOpen(false);
       setLoginForm({ email: "", password: "" });
@@ -643,6 +675,29 @@ export default function App() {
     setCurrentUser(null);
     setViewMode("customer");
   };
+
+  // Si el usuario quiere ver su página de Favoritos (HU 15)
+  if (showFavoritesPage) {
+    return (
+      <div style={{ backgroundColor: "#f8f7fb", minHeight: "100vh" }}>
+        <nav className="navbar bg-white shadow-sm py-3 sticky-top">
+          <div className="container">
+            <a className="navbar-brand d-flex align-items-center fw-bold" href="#inicio"
+               onClick={(e) => { e.preventDefault(); setShowFavoritesPage(false); }}>
+              <span
+                className="d-inline-flex align-items-center justify-content-center rounded-circle me-2"
+                style={{ width: 36, height: 36, background: "#ff5a1f", fontSize: 20 }}
+              >
+                🧡
+              </span>
+              Sabor y Ahorro
+            </a>
+          </div>
+        </nav>
+        <FavoritesPage onBack={() => setShowFavoritesPage(false)} />
+      </div>
+    );
+  }
 
   // Si es SuperAdmin autenticado y está en modo admin, renderizar AdminDashboard (Épica 6)
   if (currentUser?.role === "ROLE_ADMIN" && viewMode === "admin") {
@@ -735,7 +790,12 @@ export default function App() {
                 <a className="nav-link" href="#restaurantes">Restaurantes</a>
               </li>
               <li className="nav-item">
-                <a className="nav-link" href="#cupones">
+                <a
+                  className="nav-link"
+                  href="#favoritos"
+                  onClick={(e) => { e.preventDefault(); setShowFavoritesPage(true); }}
+                  style={{ cursor: "pointer" }}
+                >
                   Mis Favoritos {favoriteIds.length > 0 && <span className="badge bg-danger rounded-pill ms-1">{favoriteIds.length}</span>}
                 </a>
               </li>

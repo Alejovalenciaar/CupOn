@@ -91,3 +91,25 @@ export const updatePromotionStatus = async (
   );
   return response.data.data;
 };
+
+/**
+ * Alterna el estado de favorito de una promoción para el cliente autenticado (HU 15)
+ * Requiere rol ROLE_CLIENTE
+ */
+export const toggleFavorite = async (id: string): Promise<void> => {
+  await apiClient.post<ApiResponse<void>>(`/promotions/${id}/favorite`);
+};
+
+/**
+ * Obtiene las promociones favoritas del cliente autenticado (HU 15)
+ * Requiere rol ROLE_CLIENTE
+ */
+export const getMyFavorites = async (
+  page = 0,
+  size = 50
+): Promise<PageResponse<Promotion>> => {
+  const response = await apiClient.get<ApiResponse<PageResponse<Promotion>>>(
+    `/promotions/favorites?page=${page}&size=${size}`
+  );
+  return response.data.data;
+};
