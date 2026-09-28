@@ -39,9 +39,15 @@ export default function App() {
   const [loadingPromotions, setLoadingPromotions] = useState<boolean>(true);
   const [errorPromotions, setErrorPromotions] = useState<string | null>(null);
 
-  // Estados para el buscador interactivo
+  // Estados para el buscador interactivo de cupones
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeSearch, setActiveSearch] = useState<string>("");
+
+  // Estado para el buscador de Restaurantes Aliados (HU 14)
+  const [restaurantSearch, setRestaurantSearch] = useState<string>("");
+
+  // Estado para la vista de Favoritos (HU 15)
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
 
   // Estados para el Modal de detalle de cupón y compartir (HU 2.5)
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
@@ -97,6 +103,7 @@ export default function App() {
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     maxRedemptions: 100,
     imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
+    daysOfWeek: [],
   });
 
   // Estados para Perfil de Usuario (HU 1.4)
@@ -382,6 +389,7 @@ export default function App() {
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       maxRedemptions: 100,
       imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
+      daysOfWeek: [],
     });
     setIsPromoFormModalOpen(true);
   };
@@ -402,6 +410,7 @@ export default function App() {
       endDate: promo.endDate ? promo.endDate.slice(0, 16) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       maxRedemptions: promo.maxRedemptions || 100,
       imageUrl: promo.imageUrl || "",
+      daysOfWeek: (promo as any).daysOfWeek || [],
     });
     setIsPromoFormModalOpen(true);
   };
@@ -911,7 +920,22 @@ export default function App() {
               {activeSearch ? "Resultados filtrados en tiempo real" : "Promociones vigentes obtenidas de la base de datos"}
             </small>
           </div>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Toggle Mis Favoritos (HU 15) */}
+            <button
+              id="btn-toggle-favorites"
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className={`btn btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ${showFavoritesOnly ? "btn-danger" : "btn-outline-danger"}`}
+              aria-pressed={showFavoritesOnly}
+              title="Filtrar solo mis cupones favoritos (HU 15)"
+            >
+              {showFavoritesOnly ? "❤️" : "🤍"} Mis Favoritos
+              {favoriteIds.length > 0 && (
+                <span className={`badge rounded-pill ms-1 ${showFavoritesOnly ? "bg-white text-danger" : "bg-danger text-white"}`}>
+                  {favoriteIds.length}
+                </span>
+              )}
+            </button>
             {activeSearch && (
               <button
                 onClick={handleClearSearch}
@@ -939,26 +963,51 @@ export default function App() {
           </div>
         )}
 
-        {/* Si no hay resultados de búsqueda */}
-        {!loadingPromotions && !errorPromotions && promotions.length === 0 && (
-          <div className="text-center py-5 bg-white rounded-4 shadow-sm p-4">
-            <div style={{ fontSize: 48 }}>🔍</div>
-            <h5 className="fw-bold mt-2">No encontramos cupones para "{activeSearch}"</h5>
-            <p className="text-muted small">Intenta buscar con otra palabra como "Burger", "Taco", "Sushi" o borra el filtro.</p>
-            <button
-              onClick={handleClearSearch}
-              className="btn btn-primary rounded-pill px-4"
-              style={{ background: "linear-gradient(90deg, #7b2ff7, #f107a3)", border: "none" }}
-            >
-              Ver todos los cupones
-            </button>
-          </div>
-        )}
+        {/* Si no hay resultados de búsqueda o favoritos */}
+        {!loadingPromotions && !errorPromotions && (() => {
+          const displayedPromotions = showFavoritesOnly
+            ? promotions.filter((p) => favoriteIds.includes(p.id))
+            : promotions;
 
-        {/* Lista dinámica de cupones */}
-        {!loadingPromotions && !errorPromotions && promotions.length > 0 && (
+          if (displayedPromotions.length === 0) {
+            return (
+              <div className="text-center py-5 bg-white rounded-4 shadow-sm p-4">
+                <div style={{ fontSize: 48 }}>{showFavoritesOnly ? "❤️" : "🔍"}</div>
+                <h5 className="fw-bold mt-2">
+                  {showFavoritesOnly
+                    ? "Aún no tienes cupones guardados"
+                    : `No encontramos cupones para "${activeSearch}"`}
+                </h5>
+                <p className="text-muted small">
+                  {showFavoritesOnly
+                    ? "Explora las promociones y guarda las que más te gusten tocando el corazón ❤️"
+                    : 'Intenta buscar con otra palabra como "Burger", "Taco", "Sushi" o borra el filtro.'}
+                </p>
+                <button
+                  onClick={() => { setShowFavoritesOnly(false); if (!showFavoritesOnly) handleClearSearch(); }}
+                  className="btn btn-primary rounded-pill px-4"
+                  style={{ background: "linear-gradient(90deg, #7b2ff7, #f107a3)", border: "none" }}
+                >
+                  {showFavoritesOnly ? "Ver todos los cupones" : "Ver todos los cupones"}
+                </button>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
+
+        {/* Lista dinámica de cupones (con filtro de favoritos HU 15) */}
+        {!loadingPromotions && !errorPromotions && (() => {
+          const displayedPromotions = showFavoritesOnly
+            ? promotions.filter((p) => favoriteIds.includes(p.id))
+            : promotions;
+
+          if (displayedPromotions.length === 0) return null;
+
+          return (
           <div className="row g-4">
-            {promotions.map((promotion) => {
+            {displayedPromotions.map((promotion) => {
               const isFavorite = favoriteIds.includes(promotion.id);
               return (
                 <div className="col-12 col-md-6 col-lg-3" key={promotion.id}>
@@ -1014,17 +1063,50 @@ export default function App() {
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* RESTAURANTES ALIADOS */}
       <div className="container mt-5" id="restaurantes">
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        {/* Cabecera + buscador (HU 14) */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
           <div>
             <h4 className="fw-bold mb-0">Restaurantes Aliados</h4>
-            <small className="text-muted">Conectados directamente a la base de datos PostgreSQL</small>
+            <small className="text-muted">
+              {restaurantSearch
+                ? `${restaurants.filter((r) => r.businessName.toLowerCase().includes(restaurantSearch.toLowerCase()) || r.address.toLowerCase().includes(restaurantSearch.toLowerCase())).length} resultado(s) para "${restaurantSearch}"`
+                : "Conectados directamente a la base de datos PostgreSQL"}
+            </small>
           </div>
-          <span className="badge bg-success rounded-pill px-3 py-2">● En vivo</span>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Buscador de restaurantes (HU 14) */}
+            <div className="input-group" style={{ maxWidth: 280 }}>
+              <span className="input-group-text bg-white border-end-0 rounded-start-pill">
+                🔍
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0 rounded-end-pill"
+                placeholder="Buscar restaurante..."
+                value={restaurantSearch}
+                onChange={(e) => setRestaurantSearch(e.target.value)}
+                id="restaurant-search-input"
+                aria-label="Buscar restaurante por nombre o dirección"
+              />
+              {restaurantSearch && (
+                <button
+                  className="btn btn-sm btn-link position-absolute end-0 top-50 translate-middle-y pe-3"
+                  style={{ zIndex: 5 }}
+                  onClick={() => setRestaurantSearch("")}
+                  aria-label="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <span className="badge bg-success rounded-pill px-3 py-2">● En vivo</span>
+          </div>
         </div>
 
         {/* Indicador de carga de restaurantes */}
@@ -1042,32 +1124,66 @@ export default function App() {
           </div>
         )}
 
-        {/* Lista dinámica de restaurantes */}
-        {!loadingRestaurants && !errorRestaurants && (
-          <div className="row g-4">
-            {restaurants.map((restaurant) => (
-              <div className="col-12 col-md-6 col-lg-4" key={restaurant.id}>
-                <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-                  <img
-                    src={restaurant.logoUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=200&fit=crop"}
-                    className="card-img-top"
-                    style={{ height: 160, objectFit: "cover" }}
-                    alt={restaurant.businessName}
-                  />
-                  <div className="card-body d-flex flex-column">
-                    <h5 className="fw-bold mb-1">{restaurant.businessName}</h5>
-                    <p className="text-muted small flex-grow-1">{restaurant.description}</p>
-                    <p className="small mb-1 text-secondary">📍 {restaurant.address}</p>
-                    <p className="small mb-3 text-secondary">📞 {restaurant.phoneNumber}</p>
-                    <button className="btn btn-outline-dark rounded-pill w-100 fw-semibold">
-                      Ver menú y cupones
-                    </button>
+        {/* Lista dinámica de restaurantes con filtro por búsqueda (HU 14) */}
+        {!loadingRestaurants && !errorRestaurants && (() => {
+          const filtered = restaurantSearch.trim()
+            ? restaurants.filter(
+                (r) =>
+                  r.businessName.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
+                  r.address.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
+                  (r.description || "").toLowerCase().includes(restaurantSearch.toLowerCase())
+              )
+            : restaurants;
+
+          if (filtered.length === 0) {
+            return (
+              <div className="text-center py-5 bg-white rounded-4 shadow-sm p-4">
+                <div style={{ fontSize: 48 }}>🍽️</div>
+                <h5 className="fw-bold mt-2">No encontramos restaurantes para "{restaurantSearch}"</h5>
+                <p className="text-muted small">Intenta con el nombre del restaurante o la dirección.</p>
+                <button
+                  onClick={() => setRestaurantSearch("")}
+                  className="btn btn-outline-dark rounded-pill px-4"
+                >
+                  Ver todos los restaurantes
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="row g-4">
+              {filtered.map((restaurant) => (
+                <div className="col-12 col-md-6 col-lg-4" key={restaurant.id}>
+                  <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                    <img
+                      src={restaurant.logoUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=200&fit=crop"}
+                      className="card-img-top"
+                      style={{ height: 160, objectFit: "cover" }}
+                      alt={restaurant.businessName}
+                    />
+                    <div className="card-body d-flex flex-column">
+                      <h5 className="fw-bold mb-1">{restaurant.businessName}</h5>
+                      <p className="text-muted small flex-grow-1">{restaurant.description}</p>
+                      <p className="small mb-1 text-secondary">📍 {restaurant.address}</p>
+                      <p className="small mb-3 text-secondary">📞 {restaurant.phoneNumber}</p>
+                      <button
+                        className="btn btn-outline-dark rounded-pill w-100 fw-semibold"
+                        onClick={() => {
+                          setSearchTerm(restaurant.businessName);
+                          fetchPromotions(restaurant.businessName);
+                          document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        Ver cupones de este restaurante
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* BANNER ALIADOS */}
@@ -2261,6 +2377,58 @@ export default function App() {
                     value={promoForm.description || ""}
                     onChange={(e) => setPromoForm({ ...promoForm, description: e.target.value })}
                   />
+                </div>
+
+                {/* Selector de días de la semana (HU 13 / HU 17) */}
+                <div className="mb-4">
+                  <label className="form-label small fw-semibold">
+                    📅 Días en que aplica el cupón
+                    <span className="text-muted fw-normal ms-1">(opcional — sin selección = todos los días)</span>
+                  </label>
+                  <div className="d-flex flex-wrap gap-2 mt-1">
+                    {[
+                      { key: "MONDAY",    label: "Lun" },
+                      { key: "TUESDAY",   label: "Mar" },
+                      { key: "WEDNESDAY", label: "Mié" },
+                      { key: "THURSDAY",  label: "Jue" },
+                      { key: "FRIDAY",    label: "Vie" },
+                      { key: "SATURDAY",  label: "Sáb" },
+                      { key: "SUNDAY",    label: "Dom" },
+                    ].map(({ key, label }) => {
+                      const isSelected = (promoForm.daysOfWeek || []).includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            const current = promoForm.daysOfWeek || [];
+                            const updated = isSelected
+                              ? current.filter((d) => d !== key)
+                              : [...current, key];
+                            setPromoForm({ ...promoForm, daysOfWeek: updated });
+                          }}
+                          className={`btn btn-sm rounded-pill fw-semibold px-3 ${isSelected ? "text-white" : "btn-outline-secondary"}`}
+                          style={isSelected ? { background: "linear-gradient(90deg, #7b2ff7, #f107a3)", border: "none" } : {}}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                    {(promoForm.daysOfWeek || []).length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                        onClick={() => setPromoForm({ ...promoForm, daysOfWeek: [] })}
+                      >
+                        ✕ Limpiar
+                      </button>
+                    )}
+                  </div>
+                  {(promoForm.daysOfWeek || []).length > 0 && (
+                    <small className="text-muted d-block mt-1">
+                      Aplica solo los días seleccionados (HU 13/17)
+                    </small>
+                  )}
                 </div>
 
                 <button
