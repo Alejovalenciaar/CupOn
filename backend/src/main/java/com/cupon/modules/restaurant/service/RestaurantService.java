@@ -13,5 +13,7 @@ public interface RestaurantService {
 
     RestaurantResponse getRestaurantById(UUID id);
 
+    RestaurantResponse getMyRestaurant(String userEmail);
+
     RestaurantResponse updateMyRestaurant(String userEmail, UpdateRestaurantDto request);
 }

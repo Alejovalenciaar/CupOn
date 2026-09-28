@@ -21,9 +21,9 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
     Optional<Promotion> findByCode(String code);
 
     @Query("SELECT p FROM Promotion p WHERE p.status = :status " +
-            "AND (:search IS NULL " +
-            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (CAST(:search AS string) IS NULL " +
+            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
             "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek)")
     Page<Promotion> search(@Param("status") PromotionStatus status,
                             @Param("search") String search,

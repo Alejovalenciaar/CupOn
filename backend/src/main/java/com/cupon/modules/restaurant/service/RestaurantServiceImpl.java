@@ -43,6 +43,17 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     @Override
+    public RestaurantResponse getMyRestaurant(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userEmail));
+
+        RestaurantProfile profile = restaurantProfileRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Perfil de restaurante", "userId", user.getId()));
+
+        return restaurantMapper.toResponse(profile);
+    }
+
+    @Override
     @Transactional
     public RestaurantResponse updateMyRestaurant(String userEmail, UpdateRestaurantDto request) {
         User user = userRepository.findByEmail(userEmail)

@@ -34,6 +34,16 @@ export interface RegisterRestaurantRequest extends RegisterClientRequest {
   address: string;
 }
 
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 export interface AuthResponse {
   token: string;
   email: string;
@@ -51,6 +61,32 @@ export interface User {
   createdAt: string;
 }
 
+
+export interface UserProfileResponse {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  role: string;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface UpdateUserRequest {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+}
+
+export interface UpdateRestaurantRequest {
+  businessName?: string;
+  description?: string;
+  address?: string;
+  logoUrl?: string;
+  phoneNumber?: string;
+}
+
 // --- Restaurant ---
 export interface Restaurant {
   id: string;
@@ -65,6 +101,22 @@ export interface Restaurant {
 }
 
 // --- Promotion ---
+
+export interface CreatePromotionRequest {
+  title: string;
+  description?: string;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED_AMOUNT";
+  discountValue: number;
+  minPurchase?: number;
+  startDate: string;
+  endDate: string;
+  maxRedemptions?: number;
+  imageUrl?: string;
+  categoryIds?: string[];
+  daysOfWeek?: string[];
+}
+
 export interface Promotion {
   id: string;
   title: string;
@@ -86,6 +138,11 @@ export interface Promotion {
 }
 
 // --- Admin ---
+export interface ApproveRestaurantRequest {
+  approved: boolean;
+  rejectionReason?: string;
+}
+
 export interface SystemMetrics {
   totalUsers: number;
   totalRestaurants: number;
