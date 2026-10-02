@@ -150,3 +150,12 @@ export interface SystemMetrics {
   totalPromotions: number;
   activePromotions: number;
 }
+
+// --- Redemption ---
+export interface RedemptionResponse {
+  promotionId: string;
+  promotionTitle: string;
+  code: string;
+  remainingRedemptions: number; // -1 = ilimitado
+  redeemedAt: string;
+}
