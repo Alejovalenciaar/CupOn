@@ -180,4 +180,17 @@ public class PromotionController {
                 String email = authentication.getName();
                 return ResponseEntity.ok(ApiResponse.success(promotionService.getMyPromotions(email, pageable)));
         }
+
+        @PostMapping("/{id}/redeem")
+        @Operation(summary = "Canjear un cupón (público)")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cupón canjeado exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Cupón no disponible (agotado, inactivo o vencido)")
+        })
+        public ResponseEntity<ApiResponse<com.cupon.modules.promotion.dto.RedemptionResponse>> redeemPromotion(
+                        @PathVariable UUID id) {
+                com.cupon.modules.promotion.dto.RedemptionResponse response = promotionService.redeemPromotion(id);
+                return ResponseEntity.ok(ApiResponse.success("¡Cupón canjeado exitosamente!", response));
+        }
 }

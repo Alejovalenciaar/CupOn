@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const location = useLocation();
   const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
+  const userStr = localStorage.getItem('cupon_user');
+
 
   if (!token || !userStr) {
     return <Navigate to="/login" state={{ from: location }} replace />;

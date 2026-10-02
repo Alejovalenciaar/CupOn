@@ -1,4 +1,4 @@
-import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest } from "@/types";
+import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse } from "@/types";
 import apiClient from "./client";
 
 /**
@@ -110,6 +110,17 @@ export const getMyFavorites = async (
 ): Promise<PageResponse<Promotion>> => {
   const response = await apiClient.get<ApiResponse<PageResponse<Promotion>>>(
     `/promotions/favorites?page=${page}&size=${size}`
+  );
+  return response.data.data;
+};
+
+/**
+ * Canjea un cupón incrementando su contador de redenciones (HU Canje) — POST /promotions/{id}/redeem
+ * Es público — no requiere autenticación.
+ */
+export const redeemPromotion = async (id: string): Promise<RedemptionResponse> => {
+  const response = await apiClient.post<ApiResponse<RedemptionResponse>>(
+    `/promotions/${id}/redeem`
   );
   return response.data.data;
 };

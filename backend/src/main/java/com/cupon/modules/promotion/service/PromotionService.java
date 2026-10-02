@@ -3,6 +3,7 @@ package com.cupon.modules.promotion.service;
 import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.RedemptionResponse;
 import com.cupon.modules.promotion.entity.PromotionStatus;
 
 import org.springframework.data.domain.Pageable;
@@ -29,4 +30,12 @@ public interface PromotionService {
     PageResponse<PromotionResponse> getMyPromotions(String userEmail, Pageable pageable);
 
     PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus neStatus);
+
+    /**
+     * Canjea un cupón: valida disponibilidad y atomicamente incrementa currentRedemptions.
+     * Accesible por cualquier usuario autenticado (CLIENTE o público anónimo).
+     *
+     * @throws com.cupon.common.exception.PromotionNotRedeemableException si el cupón no está activo o está agotado
+     */
+    RedemptionResponse redeemPromotion(UUID promotionId);
 }
