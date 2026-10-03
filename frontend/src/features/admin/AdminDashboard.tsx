@@ -11,6 +11,8 @@ interface AdminDashboardProps {
   onCatalogNeedsRefresh?: () => void;
 }
 
+type Tab = "metrics" | "pending" | "restaurants" | "moderation";
+
 export default function AdminDashboard({
   currentUser,
   onLogout = () => {
@@ -18,29 +20,27 @@ export default function AdminDashboard({
     localStorage.removeItem("cupon_user");
     window.location.href = "/";
   },
-  onSwitchToCustomerView = () => {
-    window.location.href = "/";
-  },
+  onSwitchToCustomerView = () => { window.location.href = "/"; },
   onCatalogNeedsRefresh,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"metrics" | "pending" | "restaurants" | "moderation">("metrics");
+  const [activeTab, setActiveTab] = useState<Tab>("metrics");
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [pendingRestaurants, setPendingRestaurants] = useState<Restaurant[]>([]);
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
+  useEffect(() => { loadAdminData(); }, []);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const loadAdminData = async () => {
     setLoading(true);
-    setActionMessage(null);
-    setActionError(null);
-
     try {
       const [metricsData, pendingData, restaurantsData, promotionsData] = await Promise.all([
         getSystemMetrics(),
@@ -48,458 +48,403 @@ export default function AdminDashboard({
         getRestaurants(0, 50),
         getPromotions(undefined, 0, 50),
       ]);
-
       setMetrics(metricsData);
       setPendingRestaurants(pendingData.content || []);
       setAllRestaurants(restaurantsData.content || []);
       setAllPromotions(promotionsData.content || []);
-    } catch (err: any) {
-      console.error("Error al cargar datos de administración:", err);
-      setActionError("Error al cargar la información del panel administrativo.");
+    } catch {
+      showToast("Error al cargar los datos del panel.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Aprobar o rechazar restaurante (HU 6.1)
   const handleApprove = async (restaurantId: string, approved: boolean) => {
-    const reason = approved ? undefined : prompt("Indica el motivo del rechazo (opcional):") || undefined;
+    const reason = approved ? undefined : prompt("Motivo del rechazo (opcional):") || undefined;
     try {
       await approveRestaurant(restaurantId, { approved, rejectionReason: reason });
-      setActionMessage(approved ? "✅ Restaurante aprobado exitosamente." : "❌ Restaurante rechazado.");
+      showToast(approved ? "Restaurante aprobado exitosamente." : "Restaurante rechazado.");
       await loadAdminData();
-      if (onCatalogNeedsRefresh) onCatalogNeedsRefresh();
-      setTimeout(() => setActionMessage(null), 3500);
+      onCatalogNeedsRefresh?.();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Error al procesar la solicitud.");
+      showToast(err.response?.data?.message || "Error al procesar la solicitud.", "error");
     }
   };
 
-  // Eliminar promocion por moderación (HU 6.4)
   const handleDeletePromotion = async (promotionId: string, title: string) => {
-    if (!window.confirm(`¿Estás seguro de eliminar la promoción \"${title}\" por moderación?`)) {
-      return;
-    }
-
+    if (!window.confirm(`¿Confirmas eliminar "${title}" por moderación?`)) return;
     try {
       await deletePromotionByAdmin(promotionId);
-      setActionMessage("🗑️ Promoción eliminada por moderación administrativa.");
+      showToast("Promoción eliminada por moderación.");
       await loadAdminData();
-      if (onCatalogNeedsRefresh) onCatalogNeedsRefresh();
-      setTimeout(() => setActionMessage(null), 3500);
+      onCatalogNeedsRefresh?.();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Error al eliminar la promoción.");
+      showToast(err.response?.data?.message || "Error al eliminar.", "error");
     }
   };
 
+  const NAV_ITEMS: { id: Tab; label: string; icon: string; badge?: number }[] = [
+    { id: "metrics", label: "Métricas del sistema", icon: "📊" },
+    { id: "pending", label: "Solicitudes pendientes", icon: "⏳", badge: pendingRestaurants.length },
+    { id: "restaurants", label: "Directorio de locales", icon: "🏪" },
+    { id: "moderation", label: "Moderación de cupones", icon: "🎟️" },
+  ];
+
   return (
-    <div style={{ backgroundColor: "#0f172a", minHeight: "100vh", color: "#f8fafc" }}>
-      {/* NAVBAR SUPERADMIN */}
-      <nav className="navbar navbar-expand-lg border-bottom border-secondary py-3 sticky-top" style={{ backgroundColor: "#1e293b" }}>
-        <div className="container-fluid px-4">
-          <div className="d-flex align-items-center gap-3">
-            <span
-              className="d-flex align-items-center justify-content-center rounded-3 shadow text-white fw-bold"
-              style={{ width: 42, height: 42, background: "linear-gradient(135deg, #ef4444, #f97316)", fontSize: 22 }}
+    <div className="min-h-screen bg-surface-canvas text-content-primary antialiased flex flex-col">
+
+      {/* ── TOP BAR ───────────────────────────────────────────────────────── */}
+      <header className="bg-surface-card border-b border-surface-border sticky top-0 z-40 shadow-subtle">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          {/* Brand */}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              className="md:hidden p-1 rounded-button text-content-secondary hover:bg-surface-muted"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
             >
+              ☰
+            </button>
+            <div className="w-8 h-8 rounded-button bg-red-600 flex items-center justify-center text-white text-sm font-bold select-none">
               🛡️
-            </span>
-            <div>
-              <div className="d-flex align-items-center gap-2">
-                <span className="fw-bold fs-5 text-white">CupOn Master Admin</span>
-                <span className="badge bg-danger rounded-pill fw-bold" style={{ fontSize: "0.75rem", letterSpacing: 0.5 }}>
-                  SUPERADMIN
-                </span>
-              </div>
-              <small className="text-secondary" style={{ fontSize: "0.8rem" }}>
-                Gestión Global de la Plataforma • Épica 6
-              </small>
+            </div>
+            <div className="hidden sm:block">
+              <span className="font-semibold text-sm text-content-primary">CupOn</span>
+              <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-button">
+                Superadmin
+              </span>
             </div>
           </div>
 
-          {/* Selector de Pestañas */}
-          <div className="d-flex align-items-center gap-2 my-2 my-lg-0 flex-wrap">
-            <button
-              onClick={() => setActiveTab("metrics")}
-              className={`btn btn-sm rounded-pill px-3 fw-semibold ${activeTab === "metrics" ? "btn-primary shadow" : "btn-outline-secondary text-light"}`}
-            >
-              📊 Métricas Generales (HU 6.5)
-            </button>
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`btn btn-sm rounded-pill px-3 fw-semibold position-relative ${activeTab === "pending" ? "btn-primary shadow" : "btn-outline-secondary text-light"}`}
-            >
-              ⏳ Solicitudes Pendientes
-              {pendingRestaurants.length > 0 && (
-                <span className="badge bg-danger rounded-pill ms-2">
-                  {pendingRestaurants.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("restaurants")}
-              className={`btn btn-sm rounded-pill px-3 fw-semibold ${activeTab === "restaurants" ? "btn-primary shadow" : "btn-outline-secondary text-light"}`}
-            >
-              🏪 Directorio de Restaurantes (HU 6.2)
-            </button>
-            <button
-              onClick={() => setActiveTab("moderation")}
-              className={`btn btn-sm rounded-pill px-3 fw-semibold ${activeTab === "moderation" ? "btn-primary shadow" : "btn-outline-secondary text-light"}`}
-            >
-              🎟️ Moderación de Cupones (HU 6.3 & 6.4)
-            </button>
-          </div>
-
-          {/* Acciones */}
-          <div className="d-flex align-items-center gap-2">
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
             {currentUser && (
-              <span className="badge bg-dark text-secondary border border-secondary px-3 py-2 rounded-pill small me-1">
-                👤 {currentUser.email}
+              <span className="hidden sm:inline text-xs text-content-muted bg-surface-muted border border-surface-border px-2.5 py-1 rounded-button">
+                {currentUser.email}
               </span>
             )}
             <button
+              type="button"
               onClick={onSwitchToCustomerView}
-              className="btn btn-outline-info btn-sm rounded-pill px-3 fw-semibold"
+              className="text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-button transition-colors"
             >
-              👁️ Ver Marketplace
+              Ver marketplace
             </button>
             <button
+              type="button"
               onClick={onLogout}
-              className="btn btn-outline-danger btn-sm rounded-pill px-3"
+              className="text-xs font-medium text-content-secondary border border-surface-border bg-white hover:bg-surface-muted px-3 py-1.5 rounded-button transition-colors"
             >
-              Salir
+              Cerrar sesión
             </button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* CONTENEDOR PRINCIPAL */}
-      <div className="container py-4">
-        {actionMessage && (
-          <div className="alert alert-success border-0 shadow rounded-4 py-2 px-3 mb-4" role="alert">
-            {actionMessage}
+      <div className="flex flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6 gap-6">
+        {/* ── SIDEBAR NAV ─────────────────────────────────────────────────── */}
+        <aside className={`
+          fixed inset-y-0 left-0 z-50 w-56 bg-surface-card border-r border-surface-border shadow-hover transform transition-transform md:static md:translate-x-0 md:shadow-none md:flex-shrink-0
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}>
+          <div className="p-4 pt-16 md:pt-4 space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-content-muted px-2 mb-3">
+              Panel de control
+            </p>
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-button text-sm font-medium transition-colors text-left ${
+                  activeTab === item.id
+                    ? "bg-brand-50 text-brand-700 border border-brand-200"
+                    : "text-content-secondary hover:bg-surface-muted hover:text-content-primary"
+                }`}
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+
+            <div className="pt-4 mt-4 border-t border-surface-border">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-content-muted px-2 mb-2">
+                Estado de servicios
+              </p>
+              {[
+                { label: "API Spring Boot", ok: true },
+                { label: "PostgreSQL", ok: true },
+                { label: "Redis Cache", ok: true },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center gap-2 px-2 py-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${s.ok ? "bg-emerald-500" : "bg-red-500"}`} />
+                  <span className="text-xs text-content-secondary">{s.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
+        </aside>
+
+        {/* Overlay mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
         )}
 
-        {actionError && (
-          <div className="alert alert-danger border-0 shadow rounded-4 py-2 px-3 mb-4" role="alert">
-            {actionError}
-          </div>
-        )}
+        {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
+        <main className="flex-1 min-w-0 space-y-6">
+          {/* Toast */}
+          {toast && (
+            <div className={`px-4 py-3 rounded-card text-sm border ${
+              toast.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-red-50 border-red-200 text-red-700"
+            }`}>
+              {toast.msg}
+            </div>
+          )}
 
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-info" role="status"></div>
-            <p className="mt-2 text-secondary">Cargando métricas y registros de la plataforma...</p>
-          </div>
-        ) : (
-          <>
-            {/* ========================================================================= */}
-            {/* PESTAÑA 1: MÉTRICAS GENERALES DEL SISTEMA (HU 6.5) */}
-            {/* ========================================================================= */}
-            {activeTab === "metrics" && (
-              <div>
-                <div className="mb-4">
-                  <h3 className="fw-bold text-white mb-1">Métricas Generales de CupOn</h3>
-                  <p className="text-secondary mb-0">Monitoreo en tiempo real de usuarios, restaurantes y ofertas activas</p>
-                </div>
-
-                {/* 5 KPI CARDS */}
-                <div className="row g-3 mb-4">
-                  <div className="col-sm-6 col-lg">
-                    <div className="card border-0 shadow rounded-4 p-3 h-100" style={{ backgroundColor: "#1e293b" }}>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary small fw-semibold">Usuarios Totales</span>
-                        <span className="p-2 rounded-3 bg-primary-subtle text-primary fs-5">👥</span>
-                      </div>
-                      <div className="fs-2 fw-bold text-white">{metrics?.totalUsers || 0}</div>
-                      <small className="text-secondary">Clientes y negocios registrados</small>
-                    </div>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3 text-content-muted">
+              <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">Cargando datos de la plataforma...</span>
+            </div>
+          ) : (
+            <>
+              {/* ── MÉTRICAS ──────────────────────────────────────────────── */}
+              {activeTab === "metrics" && (
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Métricas del sistema</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">Monitoreo en tiempo real de la plataforma CupOn</p>
                   </div>
 
-                  <div className="col-sm-6 col-lg">
-                    <div className="card border-0 shadow rounded-4 p-3 h-100" style={{ backgroundColor: "#1e293b" }}>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary small fw-semibold">Restaurantes</span>
-                        <span className="p-2 rounded-3 bg-success-subtle text-success fs-5">🏪</span>
-                      </div>
-                      <div className="fs-2 fw-bold text-success">{metrics?.totalRestaurants || 0}</div>
-                      <small className="text-secondary">Establecimientos asociados</small>
-                    </div>
-                  </div>
-
-                  <div className="col-sm-6 col-lg">
-                    <div className="card border-0 shadow rounded-4 p-3 h-100" style={{ backgroundColor: "#1e293b" }}>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary small fw-semibold">Por Aprobar</span>
-                        <span className="p-2 rounded-3 bg-warning-subtle text-warning fs-5">⏳</span>
-                      </div>
-                      <div className="fs-2 fw-bold text-warning">{metrics?.pendingApprovals || 0}</div>
-                      <small className="text-secondary">En cola de validación</small>
-                    </div>
-                  </div>
-
-                  <div className="col-sm-6 col-lg">
-                    <div className="card border-0 shadow rounded-4 p-3 h-100" style={{ backgroundColor: "#1e293b" }}>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary small fw-semibold">Promociones Creadas</span>
-                        <span className="p-2 rounded-3 bg-info-subtle text-info fs-5">🎟️</span>
-                      </div>
-                      <div className="fs-2 fw-bold text-info">{metrics?.totalPromotions || 0}</div>
-                      <small className="text-secondary">Histórico de ofertas</small>
-                    </div>
-                  </div>
-
-                  <div className="col-sm-6 col-lg">
-                    <div className="card border-0 shadow rounded-4 p-3 h-100" style={{ backgroundColor: "#1e293b" }}>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary small fw-semibold">Ofertas Activas</span>
-                        <span className="p-2 rounded-3 bg-danger-subtle text-danger fs-5">🔥</span>
-                      </div>
-                      <div className="fs-2 fw-bold text-white">{metrics?.activePromotions || 0}</div>
-                      <small className="text-secondary">Disponibles en catálogo hoy</small>
-                    </div>
-                  </div>
-                </div>
-
-                {/* DIAGNÓSTICO DE SALUD DE LA PLATAFORMA */}
-                <div className="card border-0 shadow rounded-4 p-4 mb-4" style={{ backgroundColor: "#1e293b" }}>
-                  <h5 className="fw-bold text-white mb-3">Estado del Ecosistema CupOn</h5>
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <div className="p-3 rounded-4 border border-secondary" style={{ backgroundColor: "#0f172a" }}>
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <span>🟢</span>
-                          <strong className="text-white">API Backend (Spring Boot)</strong>
+                  {/* KPIs */}
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    {[
+                      { label: "Usuarios", value: metrics?.totalUsers ?? 0, icon: "👥", color: "text-blue-600 bg-blue-50 border-blue-100" },
+                      { label: "Restaurantes", value: metrics?.totalRestaurants ?? 0, icon: "🏪", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+                      { label: "Por aprobar", value: metrics?.pendingApprovals ?? 0, icon: "⏳", color: "text-amber-600 bg-amber-50 border-amber-100" },
+                      { label: "Promociones", value: metrics?.totalPromotions ?? 0, icon: "🎟️", color: "text-violet-600 bg-violet-50 border-violet-100" },
+                      { label: "Activas hoy", value: metrics?.activePromotions ?? 0, icon: "🔥", color: "text-brand-600 bg-brand-50 border-brand-100" },
+                    ].map((kpi) => (
+                      <div key={kpi.label} className="bg-surface-card border border-surface-border rounded-card p-4 shadow-subtle">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{kpi.label}</span>
+                          <span className={`text-base p-1.5 rounded-button border ${kpi.color}`}>{kpi.icon}</span>
                         </div>
-                        <small className="text-secondary d-block">Servidor y controladores operando al 100%.</small>
-                      </div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="p-3 rounded-4 border border-secondary" style={{ backgroundColor: "#0f172a" }}>
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <span>🟢</span>
-                          <strong className="text-white">Base de Datos PostgreSQL</strong>
-                        </div>
-                        <small className="text-secondary d-block">Persistencia transaccional íntegra y conectada.</small>
-                      </div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="p-3 rounded-4 border border-secondary" style={{ backgroundColor: "#0f172a" }}>
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <span>⚡</span>
-                          <strong className="text-white">Caché Redis</strong>
-                        </div>
-                        <small className="text-secondary d-block">Aceleración de catálogos y serialización activa.</small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* PESTAÑA 2: APROBACIÓN DE RESTAURANTES (HU 6.1) */}
-            {/* ========================================================================= */}
-            {activeTab === "pending" && (
-              <div>
-                <div className="mb-4">
-                  <h3 className="fw-bold text-white mb-1">Restaurantes Pendientes de Aprobación</h3>
-                  <p className="text-secondary mb-0">Revisa la documentación y aprueba o rechaza los negocios que solicitan ingresar a CupOn</p>
-                </div>
-
-                {pendingRestaurants.length === 0 ? (
-                  <div className="card border-0 shadow rounded-4 p-5 text-center" style={{ backgroundColor: "#1e293b" }}>
-                    <span style={{ fontSize: "3rem" }}>🎉</span>
-                    <h4 className="fw-bold text-white mt-3">¡Todo al día!</h4>
-                    <p className="text-secondary mb-0">No hay restaurantes pendientes de aprobación en este momento.</p>
-                  </div>
-                ) : (
-                  <div className="row g-4">
-                    {pendingRestaurants.map((rest) => (
-                      <div key={rest.id} className="col-md-6 col-lg-4">
-                        <div className="card border-0 shadow rounded-4 overflow-hidden h-100" style={{ backgroundColor: "#1e293b" }}>
-                          <div className="p-4 d-flex flex-column h-100">
-                            <div className="d-flex align-items-center gap-3 mb-3">
-                              {rest.logoUrl ? (
-                                <img
-                                  src={rest.logoUrl}
-                                  alt="Logo"
-                                  className="rounded-3"
-                                  style={{ width: 56, height: 56, objectFit: "cover" }}
-                                />
-                              ) : (
-                                <div
-                                  className="rounded-3 d-flex align-items-center justify-content-center bg-warning text-dark fw-bold fs-4"
-                                  style={{ width: 56, height: 56 }}
-                                >
-                                  🏪
-                                </div>
-                              )}
-                              <div>
-                                <h5 className="fw-bold text-white mb-1">{rest.businessName}</h5>
-                                <span className="badge bg-warning text-dark rounded-pill fw-bold">PENDIENTE</span>
-                              </div>
-                            </div>
-
-                            <div className="mb-3 text-secondary small flex-fill">
-                              <p className="mb-1"><strong>Dueño / Contacto:</strong> {rest.ownerName}</p>
-                              <p className="mb-1"><strong>Dirección:</strong> {rest.address}</p>
-                              <p className="mb-1"><strong>Teléfono:</strong> {rest.phoneNumber || "No especificado"}</p>
-                              <p className="mb-0"><strong>Descripción:</strong> {rest.description || "Sin descripción."}</p>
-                            </div>
-
-                            <div className="d-flex gap-2 pt-3 border-top border-secondary">
-                              <button
-                                onClick={() => handleApprove(rest.id, true)}
-                                className="btn btn-success flex-fill rounded-pill fw-bold btn-sm shadow"
-                              >
-                                ✅ Aprobar
-                              </button>
-                              <button
-                                onClick={() => handleApprove(rest.id, false)}
-                                className="btn btn-outline-danger flex-fill rounded-pill fw-bold btn-sm"
-                              >
-                                ❌ Rechazar
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        <div className="text-2xl font-bold text-content-primary">{kpi.value.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* ========================================================================= */}
-            {/* PESTAÑA 3: DIRECTORIO DE RESTAURANTES (HU 6.2) */}
-            {/* ========================================================================= */}
-            {activeTab === "restaurants" && (
-              <div>
-                <div className="mb-4">
-                  <h3 className="fw-bold text-white mb-1">Directorio de Establecimientos</h3>
-                  <p className="text-secondary mb-0">Restaurantes activos en la plataforma con control de acceso</p>
-                </div>
-
-                <div className="card border-0 shadow rounded-4 overflow-hidden" style={{ backgroundColor: "#1e293b" }}>
-                  <div className="table-responsive">
-                    <table className="table table-dark table-hover mb-0" style={{ backgroundColor: "#1e293b" }}>
-                      <thead>
-                        <tr className="border-secondary text-secondary small">
-                          <th className="py-3 px-4">RESTAURANTE</th>
-                          <th className="py-3">DIRECCIÓN</th>
-                          <th className="py-3">TELÉFONO</th>
-                          <th className="py-3">ESTADO</th>
-                          <th className="py-3 text-end px-4">ACCIONES</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allRestaurants.map((rest) => (
-                          <tr key={rest.id} className="border-secondary align-middle">
-                            <td className="py-3 px-4">
-                              <div className="d-flex align-items-center gap-3">
-                                {rest.logoUrl ? (
-                                  <img
-                                    src={rest.logoUrl}
-                                    alt="Logo"
-                                    className="rounded-3"
-                                    style={{ width: 40, height: 40, objectFit: "cover" }}
-                                  />
-                                ) : (
-                                  <div
-                                    className="rounded-3 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold"
-                                    style={{ width: 40, height: 40 }}
-                                  >
-                                    🍽️
-                                  </div>
-                                )}
-                                <div>
-                                  <strong className="text-white d-block">{rest.businessName}</strong>
-                                  <small className="text-secondary">{rest.ownerName}</small>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="text-light small">{rest.address}</td>
-                            <td className="text-light small">{rest.phoneNumber || "—"}</td>
-                            <td>
-                              <span className="badge bg-success rounded-pill px-3 py-1">APROBADO</span>
-                            </td>
-                            <td className="text-end px-4">
-                              <button
-                                onClick={() => alert("Restaurante validado y operando con normalidad.")}
-                                className="btn btn-outline-info btn-sm rounded-pill px-3"
-                              >
-                                Ver Detalles
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {/* Resumen textual */}
+                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle">
+                    <h2 className="text-sm font-semibold text-content-primary mb-4">Estado del ecosistema</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {[
+                        { title: "API Backend", desc: "Spring Boot 3.4 operando correctamente.", ok: true },
+                        { title: "Base de Datos", desc: "PostgreSQL 16 con persistencia transaccional.", ok: true },
+                        { title: "Caché Redis", desc: "Aceleración de catálogos activa.", ok: true },
+                      ].map((s) => (
+                        <div key={s.title} className="bg-surface-muted border border-surface-border rounded-button p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`w-2 h-2 rounded-full ${s.ok ? "bg-emerald-500" : "bg-red-500"}`} />
+                            <span className="text-xs font-semibold text-content-primary">{s.title}</span>
+                          </div>
+                          <p className="text-xs text-content-secondary leading-relaxed">{s.desc}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ========================================================================= */}
-            {/* PESTAÑA 4: MODERACIÓN DE CUPONES (HU 6.3 & HU 6.4) */}
-            {/* ========================================================================= */}
-            {activeTab === "moderation" && (
-              <div>
-                <div className="mb-4">
-                  <h3 className="fw-bold text-white mb-1">Moderación de Promociones de la Plataforma</h3>
-                  <p className="text-secondary mb-0">Supervisa las ofertas vigentes y elimina cualquier contenido engañoso o inapropiado (HU 6.3 & HU 6.4)</p>
-                </div>
+              {/* ── SOLICITUDES PENDIENTES ─────────────────────────────── */}
+              {activeTab === "pending" && (
+                <div className="space-y-5">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Solicitudes de registro</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">Restaurantes en cola de validación y aprobación</p>
+                  </div>
 
-                <div className="row g-4">
-                  {allPromotions.map((promo) => (
-                    <div key={promo.id} className="col-md-6 col-lg-4">
-                      <div className="card border-0 shadow rounded-4 overflow-hidden h-100" style={{ backgroundColor: "#1e293b" }}>
-                        <div className="position-relative">
-                          <img
-                            src={promo.imageUrl || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop"}
-                            alt={promo.title}
-                            style={{ width: "100%", height: 160, objectFit: "cover" }}
-                          />
-                          <span className="position-absolute badge bg-dark text-white rounded-pill px-3 py-1" style={{ top: 12, left: 12 }}>
-                            {promo.restaurantName}
-                          </span>
-                          <span className="position-absolute badge bg-danger text-white rounded-pill px-3 py-1 fw-bold" style={{ top: 12, right: 12 }}>
-                            {promo.discountType === "PERCENTAGE" ? `${promo.discountValue}% OFF` : `$${promo.discountValue.toLocaleString()}`}
-                          </span>
-                        </div>
+                  {pendingRestaurants.length === 0 ? (
+                    <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center">
+                      <span className="text-3xl block mb-2">🎉</span>
+                      <h3 className="font-semibold text-content-primary">Todo al día</h3>
+                      <p className="text-xs text-content-secondary mt-1">No hay restaurantes pendientes de aprobación.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {pendingRestaurants.map((rest) => (
+                        <div key={rest.id} className="bg-surface-card border border-surface-border rounded-card shadow-subtle overflow-hidden flex flex-col">
+                          <div className="p-5 flex-1 space-y-3">
+                            <div className="flex items-center gap-3">
+                              {rest.logoUrl ? (
+                                <img src={rest.logoUrl} alt="Logo" className="w-12 h-12 rounded-button object-cover border border-surface-border" />
+                              ) : (
+                                <div className="w-12 h-12 rounded-button bg-amber-100 border border-amber-200 flex items-center justify-center text-xl">🏪</div>
+                              )}
+                              <div>
+                                <p className="font-semibold text-sm text-content-primary leading-tight">{rest.businessName}</p>
+                                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-button">
+                                  Pendiente
+                                </span>
+                              </div>
+                            </div>
 
-                        <div className="p-4 d-flex flex-column flex-fill">
-                          <div className="badge bg-secondary-subtle text-light border border-secondary font-monospace align-self-start mb-2 px-3 py-1">
-                            🏷️ {promo.code}
+                            <div className="space-y-1 text-xs text-content-secondary">
+                              <p><span className="font-medium text-content-primary">Responsable:</span> {rest.ownerName}</p>
+                              <p><span className="font-medium text-content-primary">Dirección:</span> {rest.address}</p>
+                              {rest.phoneNumber && <p><span className="font-medium text-content-primary">Teléfono:</span> {rest.phoneNumber}</p>}
+                              {rest.description && <p className="line-clamp-2 mt-1 text-content-muted">{rest.description}</p>}
+                            </div>
                           </div>
-                          <h6 className="fw-bold text-white mb-2">{promo.title}</h6>
-                          <p className="text-secondary small flex-fill mb-3" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                            {promo.description || "Sin descripción."}
-                          </p>
 
-                          <div className="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
-                            <span className="small text-secondary">
-                              Canjes: <strong className="text-light">{promo.currentRedemptions || 0}/{promo.maxRedemptions || "∞"}</strong>
-                            </span>
+                          <div className="px-5 py-3 border-t border-surface-border flex gap-2">
                             <button
-                              onClick={() => handleDeletePromotion(promo.id, promo.title)}
-                              className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold shadow-sm"
-                              title="Eliminar por moderación administrativa (HU 6.4)"
+                              type="button"
+                              onClick={() => handleApprove(rest.id, true)}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 rounded-button transition-colors shadow-subtle"
                             >
-                              🗑️ Eliminar Contenido
+                              ✓ Aprobar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(rest.id, false)}
+                              className="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 text-xs font-semibold py-2 rounded-button transition-colors"
+                            >
+                              ✕ Rechazar
                             </button>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+
+              {/* ── DIRECTORIO DE RESTAURANTES ─────────────────────────── */}
+              {activeTab === "restaurants" && (
+                <div className="space-y-5">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Directorio de establecimientos</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">Restaurantes aprobados y activos en la plataforma</p>
+                  </div>
+
+                  <div className="bg-surface-card border border-surface-border rounded-card shadow-subtle overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-surface-border bg-surface-muted">
+                            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted px-4 py-3">Establecimiento</th>
+                            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted py-3">Dirección</th>
+                            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted py-3">Teléfono</th>
+                            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted py-3">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-surface-border">
+                          {allRestaurants.map((rest) => (
+                            <tr key={rest.id} className="hover:bg-surface-muted transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {rest.logoUrl ? (
+                                    <img src={rest.logoUrl} alt="" className="w-8 h-8 rounded-button object-cover border border-surface-border" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-button bg-surface-muted border border-surface-border flex items-center justify-center text-sm">🍽️</div>
+                                  )}
+                                  <div>
+                                    <p className="font-medium text-content-primary text-xs">{rest.businessName}</p>
+                                    <p className="text-[11px] text-content-muted">{rest.ownerName}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 text-xs text-content-secondary max-w-[180px] truncate">{rest.address}</td>
+                              <td className="py-3 text-xs text-content-secondary">{rest.phoneNumber || "—"}</td>
+                              <td className="py-3">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-button">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                  Aprobado
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {allRestaurants.length === 0 && (
+                        <div className="text-center py-10 text-xs text-content-muted">No hay restaurantes aprobados aún.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── MODERACIÓN ─────────────────────────────────────────── */}
+              {activeTab === "moderation" && (
+                <div className="space-y-5">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Moderación de cupones</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">Supervisa y retira promociones que incumplan el reglamento de la plataforma</p>
+                  </div>
+
+                  {allPromotions.length === 0 ? (
+                    <div className="bg-surface-card border border-surface-border rounded-card p-10 text-center">
+                      <p className="text-xs text-content-muted">No hay promociones registradas en la plataforma.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {allPromotions.map((promo) => (
+                        <div key={promo.id} className="bg-surface-card border border-surface-border rounded-card shadow-subtle overflow-hidden flex flex-col">
+                          <div className="relative">
+                            <img
+                              src={promo.imageUrl || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=200&fit=crop"}
+                              alt={promo.title}
+                              className="w-full h-36 object-cover"
+                            />
+                            <span className="absolute top-2 left-2 text-[10px] font-semibold bg-black/60 text-white px-2 py-0.5 rounded-button">
+                              {promo.restaurantName}
+                            </span>
+                            <span className="absolute top-2 right-2 text-[10px] font-bold bg-brand-600 text-white px-2 py-0.5 rounded-button">
+                              {promo.discountType === "PERCENTAGE" ? `${promo.discountValue}% OFF` : `$${Number(promo.discountValue).toLocaleString()}`}
+                            </span>
+                          </div>
+
+                          <div className="p-4 flex-1 space-y-2">
+                            <span className="inline-block font-mono text-[10px] bg-surface-muted border border-surface-border text-content-secondary px-2 py-0.5 rounded-button">
+                              {promo.code}
+                            </span>
+                            <p className="font-semibold text-sm text-content-primary leading-tight">{promo.title}</p>
+                            <p className="text-xs text-content-secondary line-clamp-2">{promo.description || "Sin descripción."}</p>
+                          </div>
+
+                          <div className="px-4 py-3 border-t border-surface-border flex items-center justify-between">
+                            <span className="text-[11px] text-content-muted">
+                              Canjes: <strong className="text-content-primary">{promo.currentRedemptions || 0}/{promo.maxRedemptions || "∞"}</strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePromotion(promo.id, promo.title)}
+                              className="text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 px-3 py-1.5 rounded-button transition-colors"
+                            >
+                              Eliminar contenido
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </main>
       </div>
     </div>
   );

@@ -186,7 +186,7 @@ class RestaurantControllerTest {
     @Test
     @WithMockUser(username = "otro@cupon.com", authorities = "ROLE_RESTAURANTE")
     void updateMyRestaurant_sinPerfilAsociado_devuelve404() throws Exception {
-        UpdateRestaurantDto request = new UpdateRestaurantDto("X", null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("Local Sin Perfil", null, null, null, null);
         when(restaurantService.updateMyRestaurant(eq("otro@cupon.com"), any()))
                 .thenThrow(new ResourceNotFoundException("Perfil de restaurante", "userId", UUID.randomUUID()));
 
