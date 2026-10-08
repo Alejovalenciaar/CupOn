@@ -4,7 +4,7 @@ services:
     image: postgres:16-alpine
     container_name: cupon_db
     environment:
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_DB: ${POSTGRESS_DB_CUPON}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
@@ -12,7 +12,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${DB_NAME}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRESS_DB_CUPON}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,13 +43,15 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESS_DB_CUPON: ${POSTGRESS_DB_CUPON}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:?La variable de entorno JWT_SECRET es obligatoria (defínela en .env)}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_SECRET_CUPON: ${JWT_SECRET_CUPON:-${JWT_SECRET:-changeme}}
+      JWT_EXPIRATION_CUPON: ${JWT_EXPIRATION_CUPON:-${JWT_EXPIRATION:-86400000}}
+      JWT_SECRET: ${JWT_SECRET:-${JWT_SECRET_CUPON:-changeme}}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-${JWT_EXPIRATION_CUPON:-86400000}}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}

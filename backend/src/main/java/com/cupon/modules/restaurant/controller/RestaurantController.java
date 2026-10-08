@@ -52,6 +52,20 @@ public class RestaurantController {
         return ResponseEntity.ok(ApiResponse.success(restaurantService.getRestaurantById(id)));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
+    @Operation(summary = "Obtener mi perfil de restaurante autenticado")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Perfil de restaurante obtenido"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Perfil de restaurante no encontrado")
+    })
+    public ResponseEntity<ApiResponse<RestaurantResponse>> getMyRestaurant(Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(ApiResponse.success(restaurantService.getMyRestaurant(email)));
+    }
+
     @PutMapping("/me")
     @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
     @Operation(summary = "Actualizar mi perfil de restaurante")

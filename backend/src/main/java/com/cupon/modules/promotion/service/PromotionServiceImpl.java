@@ -46,7 +46,8 @@ public class PromotionServiceImpl implements PromotionService {
     @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #dayOfWeek + '_' + #pageable.pageNumber")
     public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
-        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek, pageable);
+        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
+                pageable);
         return PageResponse.of(page.map(promotionMapper::toResponse));
     }
 
@@ -189,5 +190,74 @@ public class PromotionServiceImpl implements PromotionService {
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", email));
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "promotions", allEntries = true)
+    public PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus newStatus) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", promotionId));
+
+        if (!promotion.getRestaurantProfile().getId().equals(restaurant.getId())) {
+            throw new AccessDeniedException("No tienes permisos para actualizar el estado de esta promoción");
+        }
+
+        promotion.setStatus(newStatus);
+        Promotion saved = promotionRepository.save(promotion);
+        return promotionMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "promotions", allEntries = true)
+    public com.cupon.modules.promotion.dto.RedemptionResponse redeemPromotion(UUID promotionId) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", promotionId));
+
+        // Validar que esté activa
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new com.cupon.common.exception.PromotionNotRedeemableException(
+                    "Esta promoción no está activa y no puede ser canjeada."
+            );
+        }
+
+        // Validar vigencia de fechas
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (now.isBefore(promotion.getStartDate())) {
+            throw new com.cupon.common.exception.PromotionNotRedeemableException(
+                    "Esta promoción aún no ha comenzado."
+            );
+        }
+        if (now.isAfter(promotion.getEndDate())) {
+            throw new com.cupon.common.exception.PromotionNotRedeemableException(
+                    "Esta promoción ha expirado."
+            );
+        }
+
+        // Validar límite de redenciones (0 = ilimitado)
+        if (promotion.getMaxRedemptions() > 0
+                && promotion.getCurrentRedemptions() >= promotion.getMaxRedemptions()) {
+            throw new com.cupon.common.exception.PromotionNotRedeemableException(
+                    "Este cupón ya ha sido canjeado el máximo de veces permitidas."
+            );
+        }
+
+        // Incrementar contador
+        promotion.setCurrentRedemptions(promotion.getCurrentRedemptions() + 1);
+        promotionRepository.save(promotion);
+
+        int remaining = promotion.getMaxRedemptions() > 0
+                ? promotion.getMaxRedemptions() - promotion.getCurrentRedemptions()
+                : -1; // -1 = ilimitado
+
+        return new com.cupon.modules.promotion.dto.RedemptionResponse(
+                promotion.getId(),
+                promotion.getTitle(),
+                promotion.getCode(),
+                remaining,
+                now
+        );
     }
 }
