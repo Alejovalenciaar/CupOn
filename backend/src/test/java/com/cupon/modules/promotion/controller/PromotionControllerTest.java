@@ -62,7 +62,7 @@ class PromotionControllerTest {
                                 id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
                                 100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
-                                Set.of(), LocalDateTime.now(), Set.of());
+                                Set.of(), LocalDateTime.now(), Set.of(), true);
         }
 
         private CreatePromotionRequest sampleRequest() {

@@ -134,6 +134,8 @@ export interface Promotion {
   restaurantName: string;
   restaurantId: string;
   categories: string[];
+  daysOfWeek?: string[];
+  currentlyActive?: boolean;
   createdAt: string;
 }
 
