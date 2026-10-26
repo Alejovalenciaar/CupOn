@@ -1,0 +1,23 @@
+CUPON: CUENTAS, REGISTRO Y ACCESO
+
+Existen dos formas de registrarse en CupOn:
+
+Registro como cliente: se crea la cuenta de inmediato y el cliente puede
+iniciar sesión sin esperar ninguna aprobación.
+
+Registro como restaurante: se crea la cuenta del restaurante, pero queda
+en estado PENDIENTE de aprobación. Un administrador debe revisar y
+aprobar el restaurante antes de que pueda publicar promociones visibles
+en el catálogo público. Si el administrador rechaza el registro, se
+puede indicar un motivo de rechazo.
+
+Para iniciar sesión se requiere correo electrónico y contraseña. La
+plataforma nunca almacena la contraseña en texto plano.
+
+Si un cliente o restaurante olvida su contraseña, puede solicitar su
+restablecimiento. Se envía un enlace de recuperación al correo
+registrado; ese enlace tiene un tiempo de expiración limitado, pasado el
+cual deja de ser válido y debe solicitarse uno nuevo.
+
+Una cuenta puede ser suspendida por un administrador; mientras esté
+suspendida, el usuario no puede iniciar sesión.

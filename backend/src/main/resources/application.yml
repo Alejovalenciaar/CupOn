@@ -51,6 +51,33 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
+  # --- Spring AI: Chat (Groq, API compatible con OpenAI) ---
+  ai:
+    model:
+      chat: openai
+      embedding: transformers
+    openai:
+      api-key: ${GROQ_API_KEY:}
+      # Sin "/v1" final: Spring AI 1.1.x concatena "/v1/chat/completions" al base-url
+      # internamente (OpenAiApi.completionsPath). Ponerlo aquí también duplica el
+      # "/v1" y Groq responde 404 "Unknown request URL: /openai/v1/v1/...".
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: openai/gpt-oss-20b
+          temperature: 0.2
+    # --- Spring AI: Embeddings locales (Transformers ONNX) ---
+    # Se usa la variante MULTILINGÜE de e5 (no e5-small-v2, que es solo inglés):
+    # toda la base de conocimiento del chatbot está en español.
+    embedding:
+      transformer:
+        tokenizer:
+          uri: https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/tokenizer.json
+          options:
+            padding: true
+        onnx:
+          model-uri: https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/model.onnx
+
 # --- JWT (custom properties) ---
 app:
   jwt:

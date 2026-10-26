@@ -1,0 +1,11 @@
+CUPON: PROMOCIONES FAVORITAS
+
+Un cliente que ha iniciado sesión puede marcar cualquier promoción como
+favorita, y puede quitarla de favoritos en cualquier momento.
+
+Un cliente puede consultar en cualquier momento el listado completo de
+todas sus promociones marcadas como favoritas.
+
+Los favoritos son información privada de cada cliente: no se comparten
+entre cuentas y un cliente nunca puede ver ni modificar los favoritos de
+otro cliente.

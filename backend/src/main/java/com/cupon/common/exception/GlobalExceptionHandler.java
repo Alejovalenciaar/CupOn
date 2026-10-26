@@ -5,6 +5,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -75,6 +77,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("No tienes permisos para realizar esta acción"));
+    }
+
+    @ExceptionHandler({ NonTransientAiException.class, TransientAiException.class })
+    public ResponseEntity<ApiResponse<Void>> handleAiProviderError(RuntimeException ex) {
+        log.warn("Error del proveedor de IA (Groq)", ex);
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(
+                        "El asistente no está disponible en este momento. Inténtalo de nuevo en unos segundos."));
     }
 
     @ExceptionHandler(Exception.class)

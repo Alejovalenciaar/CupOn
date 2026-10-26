@@ -161,3 +161,12 @@ export interface RedemptionResponse {
   remainingRedemptions: number; // -1 = ilimitado
   redeemedAt: string;
 }
+
+// --- Chatbot ---
+export interface ChatRequest {
+  pregunta: string;
+}
+
+export interface ChatResponse {
+  respuesta: string;
+}
