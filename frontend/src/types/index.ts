@@ -115,6 +115,9 @@ export interface CreatePromotionRequest {
   imageUrl?: string;
   categoryIds?: string[];
   daysOfWeek?: string[];
+  /** Hora diaria "HH:mm"; null junto con endTime = todo el día */
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 export interface Promotion {
@@ -135,6 +138,9 @@ export interface Promotion {
   restaurantId: string;
   categories: string[];
   createdAt: string;
+  daysOfWeek?: string[];
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 // --- Admin ---

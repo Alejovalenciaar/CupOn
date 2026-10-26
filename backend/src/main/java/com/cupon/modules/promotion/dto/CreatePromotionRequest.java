@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -48,10 +49,20 @@ public record CreatePromotionRequest(
 
         Set<UUID> categoryIds,
 
-        Set<DayOfWeek> daysOfWeek
+        Set<DayOfWeek> daysOfWeek,
+
+        LocalTime startTime,
+
+        LocalTime endTime
 ) {
     @AssertTrue(message = "La fecha/hora de inicio no puede ser posterior a la fecha/hora de fin")
     public boolean isPeriodoValido() {
         return startDate == null || endDate == null || !startDate.isAfter(endDate);
+    }
+
+    @AssertTrue(message = "La franja horaria requiere hora de inicio y de fin, y la de inicio debe ser anterior a la de fin")
+    public boolean isFranjaHorariaValida() {
+        if (startTime == null && endTime == null) return true;
+        return startTime != null && endTime != null && startTime.isBefore(endTime);
     }
 }

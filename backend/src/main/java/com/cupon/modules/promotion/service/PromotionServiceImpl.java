@@ -74,6 +74,8 @@ public class PromotionServiceImpl implements PromotionService {
                 .minPurchase(request.minPurchase())
                 .startDate(request.startDate())
                 .endDate(request.endDate())
+                .startTime(request.startTime())
+                .endTime(request.endTime())
                 .maxRedemptions(request.maxRedemptions())
                 .imageUrl(request.imageUrl())
                 .status(PromotionStatus.DRAFT)
@@ -112,6 +114,8 @@ public class PromotionServiceImpl implements PromotionService {
         promotion.setMinPurchase(request.minPurchase());
         promotion.setStartDate(request.startDate());
         promotion.setEndDate(request.endDate());
+        promotion.setStartTime(request.startTime());
+        promotion.setEndTime(request.endTime());
         promotion.setMaxRedemptions(request.maxRedemptions());
         promotion.setImageUrl(request.imageUrl());
 

@@ -6,6 +6,7 @@ import com.cupon.modules.promotion.entity.PromotionStatus;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,6 +29,8 @@ public record PromotionResponse(
         Set<String> categories,
         LocalDateTime createdAt,
         Set<DayOfWeek> daysOfWeek,
+        LocalTime startTime,
+        LocalTime endTime,
         boolean currentlyActive
 ) {
 }

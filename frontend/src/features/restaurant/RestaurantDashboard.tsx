@@ -23,6 +23,16 @@ const Field = ({
   </div>
 );
 
+const WEEK_DAYS = [
+  { key: "MONDAY", label: "Lun" },
+  { key: "TUESDAY", label: "Mar" },
+  { key: "WEDNESDAY", label: "Mié" },
+  { key: "THURSDAY", label: "Jue" },
+  { key: "FRIDAY", label: "Vie" },
+  { key: "SATURDAY", label: "Sáb" },
+  { key: "SUNDAY", label: "Dom" },
+];
+
 const inputCls = "w-full bg-white border border-surface-border rounded-button px-3 py-2 text-sm text-content-primary placeholder:text-content-muted outline-none focus:border-brand-500 shadow-subtle";
 
 export default function RestaurantDashboard({
@@ -61,6 +71,7 @@ export default function RestaurantDashboard({
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     maxRedemptions: 100,
     imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
+    daysOfWeek: [], startTime: "", endTime: "",
   });
 
   useEffect(() => { loadDashboardData(); }, []);
@@ -118,6 +129,7 @@ export default function RestaurantDashboard({
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       maxRedemptions: 100,
       imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
+      daysOfWeek: [], startTime: "", endTime: "",
     });
     setIsPromoModalOpen(true);
   };
@@ -136,18 +148,31 @@ export default function RestaurantDashboard({
       endDate: promo.endDate ? promo.endDate.slice(0, 16) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       maxRedemptions: promo.maxRedemptions || 100,
       imageUrl: promo.imageUrl || "",
+      daysOfWeek: promo.daysOfWeek || [],
+      startTime: promo.startTime ? promo.startTime.slice(0, 5) : "",
+      endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
     });
     setIsPromoModalOpen(true);
   };
 
   const handleSavePromo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Boolean(promoForm.startTime) !== Boolean(promoForm.endTime)) {
+      setPromoError("Indica hora de inicio y de fin, o deja ambas vacías para todo el día.");
+      return;
+    }
+    if (promoForm.startTime && promoForm.endTime && promoForm.startTime >= promoForm.endTime) {
+      setPromoError("La hora de inicio debe ser anterior a la hora de fin.");
+      return;
+    }
     setPromoSaving(true);
     setPromoError(null);
     const payload = {
       ...promoForm,
       startDate: promoForm.startDate.length === 16 ? `${promoForm.startDate}:00` : promoForm.startDate,
       endDate: promoForm.endDate.length === 16 ? `${promoForm.endDate}:00` : promoForm.endDate,
+      startTime: promoForm.startTime || null,
+      endTime: promoForm.endTime || null,
     };
     try {
       if (editingPromoId) {
@@ -801,6 +826,54 @@ export default function RestaurantDashboard({
                       className={inputCls}
                       value={promoForm.endDate}
                       onChange={(e) => setPromoForm({ ...promoForm, endDate: e.target.value })}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Días en que aplica" hint="Sin selección = todos los días.">
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEK_DAYS.map(({ key, label }) => {
+                      const selected = (promoForm.daysOfWeek || []).includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => {
+                            const current = promoForm.daysOfWeek || [];
+                            setPromoForm({
+                              ...promoForm,
+                              daysOfWeek: selected ? current.filter((d) => d !== key) : [...current, key],
+                            });
+                          }}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-button border transition-colors ${
+                            selected
+                              ? "bg-brand-600 border-brand-600 text-white"
+                              : "bg-white border-surface-border text-content-secondary hover:bg-surface-muted"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Hora de inicio" hint="Vacío = todo el día.">
+                    <input
+                      type="time"
+                      className={inputCls}
+                      value={promoForm.startTime || ""}
+                      onChange={(e) => setPromoForm({ ...promoForm, startTime: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Hora de fin">
+                    <input
+                      type="time"
+                      className={inputCls}
+                      value={promoForm.endTime || ""}
+                      onChange={(e) => setPromoForm({ ...promoForm, endTime: e.target.value })}
                     />
                   </Field>
                 </div>

@@ -23,6 +23,7 @@ import com.cupon.modules.user.entity.RestaurantProfile;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -64,6 +65,13 @@ public class Promotion extends BaseEntity {
 
     @Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
+
+    /** Hora diaria de inicio de la franja. Null junto con endTime = aplica todo el día. */
+    @Column(name = "start_time")
+    private LocalTime startTime;
+
+    @Column(name = "end_time")
+    private LocalTime endTime;
 
     @Column(name = "max_redemptions")
     @Builder.Default

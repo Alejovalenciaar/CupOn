@@ -98,7 +98,7 @@ class PromotionServiceImplTest {
         return new CreatePromotionRequest(
                 "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
-                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
+                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of(), null, null);
     }
 
     @Test
@@ -322,7 +322,8 @@ class PromotionServiceImplTest {
                 promotion.getStartDate(), promotion.getEndDate(), promotion.getMaxRedemptions(),
                 promotion.getCurrentRedemptions(), promotion.getStatus(), promotion.getImageUrl(),
                 promotion.getRestaurantProfile().getBusinessName(), promotion.getRestaurantProfile().getId(),
-                Set.of(), promotion.getCreatedAt(), Set.of(), promotion.isCurrentlyActive());
+                Set.of(), promotion.getCreatedAt(), Set.of(), promotion.getStartTime(), promotion.getEndTime(),
+                promotion.isCurrentlyActive());
     }
 
     @Test

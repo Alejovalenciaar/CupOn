@@ -62,14 +62,14 @@ class PromotionControllerTest {
                                 id, "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now().plusDays(5),
                                 100, 0, PromotionStatus.ACTIVE, null, "Pizza Feliz", UUID.randomUUID(),
-                                Set.of(), LocalDateTime.now(), Set.of(), true);
+                                Set.of(), LocalDateTime.now(), Set.of(), null, null, true);
         }
 
         private CreatePromotionRequest sampleRequest() {
                 return new CreatePromotionRequest(
                                 "2x1 en pizzas", "descripcion", "CODE1", DiscountType.PERCENTAGE,
                                 BigDecimal.TEN, BigDecimal.ZERO, LocalDateTime.now(),
-                                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of());
+                                LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of(), null, null);
         }
 
         @Test
