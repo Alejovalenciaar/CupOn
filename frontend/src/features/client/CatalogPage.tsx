@@ -20,6 +20,17 @@ const CATEGORIES = [
   { name: "Bares", emoji: "🍸", query: "Bar" },
 ];
 
+const WEEK_DAYS = [
+  { key: "", label: "Todos" },
+  { key: "MONDAY", label: "Lun" },
+  { key: "TUESDAY", label: "Mar" },
+  { key: "WEDNESDAY", label: "Mié" },
+  { key: "THURSDAY", label: "Jue" },
+  { key: "FRIDAY", label: "Vie" },
+  { key: "SATURDAY", label: "Sáb" },
+  { key: "SUNDAY", label: "Dom" },
+];
+
 export default function CatalogPage() {
   const navigate = useNavigate();
 
@@ -39,6 +50,7 @@ export default function CatalogPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
+  const [activeDay, setActiveDay] = useState("");
 
   // Restaurantes
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -83,14 +95,16 @@ export default function CatalogPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPromotions = (query?: string) => {
+  const fetchPromotions = (query?: string, day?: string) => {
     setLoadingPromos(true);
     setErrorPromos(null);
     const q = query !== undefined ? query : activeSearch;
-    getPromotions(q || undefined, 0, 16)
+    const dow = day !== undefined ? day : activeDay;
+    getPromotions(q || undefined, 0, 16, dow || undefined)
       .then((d) => {
         setPromotions(d.content);
         setActiveSearch(q || "");
+        setActiveDay(dow || "");
       })
       .catch(() => setErrorPromos("No se pudieron cargar los cupones."))
       .finally(() => setLoadingPromos(false));
@@ -284,6 +298,28 @@ export default function CatalogPage() {
               );
             })}
           </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            <span className="text-xs font-medium text-content-muted whitespace-nowrap">Día:</span>
+            {WEEK_DAYS.map(({ key, label }) => {
+              const isActive = activeDay === key;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => fetchPromotions(undefined, key)}
+                  className={`px-3 py-1 rounded-button text-xs border whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "bg-brand-600 border-brand-600 text-white font-medium shadow-subtle"
+                      : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-normal"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         {/* ── SECCIÓN DE CUPONES DESTACADOS ──────────────────────────────────── */}
@@ -351,7 +387,9 @@ export default function CatalogPage() {
               <h3 className="font-semibold text-content-primary text-base">
                 {showFavoritesOnly
                   ? "Aún no tienes cupones guardados"
-                  : `No se encontraron ofertas para "${activeSearch}"`}
+                  : activeSearch
+                  ? `No se encontraron ofertas para "${activeSearch}"`
+                  : "No hay ofertas para el día seleccionado"}
               </h3>
               <p className="text-xs text-content-secondary mt-1 mb-4">
                 {showFavoritesOnly
@@ -364,7 +402,7 @@ export default function CatalogPage() {
                   setShowFavoritesOnly(false);
                   setSearchTerm("");
                   setActiveCategory("");
-                  fetchPromotions("");
+                  fetchPromotions("", "");
                 }}
                 className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-4 py-2 rounded-button transition-colors"
               >

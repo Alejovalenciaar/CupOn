@@ -6,14 +6,17 @@ import apiClient from "./client";
  * @param search Término de búsqueda opcional
  * @param page Número de página (inicia en 0)
  * @param size Cantidad de promociones por página
+ * @param dayOfWeek Día opcional en que aplica la promoción (MONDAY … SUNDAY)
  */
 export const getPromotions = async (
   search?: string,
   page = 0,
-  size = 10
+  size = 10,
+  dayOfWeek?: string
 ): Promise<PageResponse<Promotion>> => {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
+  if (dayOfWeek) params.append("dayOfWeek", dayOfWeek);
   params.append("page", page.toString());
   params.append("size", size.toString());
 
