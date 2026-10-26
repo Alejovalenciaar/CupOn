@@ -1,0 +1,39 @@
+CUPON: PROMOCIONES Y CANJE
+
+Una promoción (también llamada cupón) es publicada por un restaurante
+aprobado y puede incluir: título, descripción, un código opcional, un tipo
+de descuento, el valor del descuento, una compra mínima, una fecha de
+inicio y una fecha de fin, uno o varios días de la semana en los que
+aplica, y un número máximo de canjes permitidos.
+
+El tipo de descuento puede ser de dos formas:
+- Porcentaje (por ejemplo, 30% de descuento sobre el valor de la compra).
+- Monto fijo (por ejemplo, $15.000 de descuento).
+
+Una promoción puede tener una compra mínima requerida para poder aplicarse.
+
+Estados posibles de una promoción:
+- DRAFT (borrador): creada pero aún no publicada para el público.
+- ACTIVE (activa): visible y disponible para los clientes.
+- EXPIRED (expirada): su fecha de fin ya pasó.
+- DISABLED (deshabilitada): el restaurante o un administrador la desactivó.
+
+Una promoción se considera vigente para un cliente solo si su estado es
+ACTIVE y la fecha y hora actuales están dentro del rango de inicio y fin
+definido por el restaurante. Si la promoción define días de la semana
+específicos, solo es válida en esos días.
+
+La plataforma revisa automáticamente, cada 15 minutos, todas las
+promociones activas y marca como EXPIRED aquellas cuya fecha de fin ya
+pasó.
+
+Canjear un cupón incrementa el contador de canjes realizados de esa
+promoción. Un cupón no puede canjearse si:
+- Ya alcanzó el número máximo de canjes permitidos.
+- Su estado no es ACTIVE.
+- Ya está vencido (fuera del rango de fechas).
+
+Importante: CupOn es un directorio de promociones, no una plataforma de
+pedidos ni de pagos en línea. El canje del cupón y el consumo de la
+promoción se gestionan directamente en el restaurante; la plataforma no
+procesa pagos, no genera pedidos ni gestiona entregas a domicilio.

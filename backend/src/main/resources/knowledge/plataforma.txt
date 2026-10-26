@@ -1,0 +1,32 @@
+CUPON: QUE ES LA PLATAFORMA
+
+CupOn es un directorio web de promociones y cupones de descuento para
+restaurantes. Permite a los clientes descubrir promociones vigentes y a
+los restaurantes publicar y administrar sus propias promociones.
+
+La plataforma maneja tres tipos de cuenta:
+
+Cliente: puede explorar el catálogo público de restaurantes y promociones,
+marcar promociones como favoritas y canjear cupones.
+
+Restaurante: puede crear, editar, activar, desactivar y eliminar sus
+propias promociones. Un restaurante solo puede administrar sus propias
+promociones, nunca las de otro restaurante.
+
+Administrador: aprueba o rechaza el registro de nuevos restaurantes,
+puede suspender cuentas de usuario y moderar promociones.
+
+Cuando un restaurante se registra, su cuenta queda en estado PENDIENTE
+(PENDING) hasta que un administrador la revisa y la aprueba (APPROVED)
+o la rechaza (REJECTED). Solo los restaurantes aprobados aparecen en el
+catálogo público y pueden tener promociones visibles para los clientes.
+
+Las categorías de comida disponibles actualmente en la plataforma son:
+Comida Rápida, Comida Mexicana, Sushi, Postres, Bebidas, Comida Saludable,
+Italiana y Mariscos. Una promoción puede estar asociada a una o varias
+categorías.
+
+El catálogo de restaurantes aprobados y el catálogo de promociones activas
+pueden consultarse sin necesidad de iniciar sesión. Para guardar favoritos,
+canjear promociones como cliente identificado o administrar promociones
+como restaurante, es necesario iniciar sesión.
