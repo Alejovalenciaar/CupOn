@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest } from "@/types";
+import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
-import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "@/api/promotionServices";
+import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, getCategories } from "@/api/promotionServices";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -64,6 +64,7 @@ export default function RestaurantDashboard({
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [copiedPromoId, setCopiedPromoId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [promoForm, setPromoForm] = useState<CreatePromotionRequest>({
     title: "", description: "", code: "", discountType: "PERCENTAGE",
     discountValue: 20, minPurchase: 0,
@@ -71,10 +72,13 @@ export default function RestaurantDashboard({
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     maxRedemptions: 100,
     imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
-    daysOfWeek: [], startTime: "", endTime: "",
+    daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
   });
 
-  useEffect(() => { loadDashboardData(); }, []);
+  useEffect(() => {
+    loadDashboardData();
+    getCategories().then(setCategories).catch(() => {});
+  }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -129,7 +133,7 @@ export default function RestaurantDashboard({
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       maxRedemptions: 100,
       imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
-      daysOfWeek: [], startTime: "", endTime: "",
+      daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
     });
     setIsPromoModalOpen(true);
   };
@@ -149,6 +153,11 @@ export default function RestaurantDashboard({
       maxRedemptions: promo.maxRedemptions || 100,
       imageUrl: promo.imageUrl || "",
       daysOfWeek: promo.daysOfWeek || [],
+      // PromotionResponse expone nombres; los nombres de categoría son únicos.
+      // Si no cargaron las categorías se omite el campo para no borrar las existentes.
+      categoryIds: categories.length
+        ? categories.filter((c) => promo.categories?.includes(c.name)).map((c) => c.id)
+        : undefined,
       startTime: promo.startTime ? promo.startTime.slice(0, 5) : "",
       endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
     });
@@ -829,6 +838,35 @@ export default function RestaurantDashboard({
                     />
                   </Field>
                 </div>
+
+                <Field label="Categorías" hint="Ayuda a los clientes a encontrar tu cupón en el catálogo.">
+                  <div className="flex flex-wrap gap-1.5">
+                    {categories.map(({ id, name }) => {
+                      const selected = (promoForm.categoryIds || []).includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => {
+                            const current = promoForm.categoryIds || [];
+                            setPromoForm({
+                              ...promoForm,
+                              categoryIds: selected ? current.filter((c) => c !== id) : [...current, id],
+                            });
+                          }}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-button border transition-colors ${
+                            selected
+                              ? "bg-brand-600 border-brand-600 text-white"
+                              : "bg-white border-surface-border text-content-secondary hover:bg-surface-muted"
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
 
                 <Field label="Días en que aplica" hint="Sin selección = todos los días.">
                   <div className="flex flex-wrap gap-1.5">

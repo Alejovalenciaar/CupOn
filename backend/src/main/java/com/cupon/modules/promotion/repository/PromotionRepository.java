@@ -28,10 +28,12 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             "AND (CAST(:search AS string) IS NULL " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
             "OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
-            "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek)")
+            "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek) " +
+            "AND (:categoryId IS NULL OR EXISTS (SELECT c FROM p.categories c WHERE c.id = :categoryId))")
     Page<Promotion> search(@Param("status") PromotionStatus status,
                             @Param("search") String search,
                             @Param("dayOfWeek") DayOfWeek dayOfWeek,
+                            @Param("categoryId") UUID categoryId,
                             Pageable pageable);
 
     long countByStatus(PromotionStatus status);

@@ -1,4 +1,4 @@
-import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse } from "@/types";
+import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, Category } from "@/types";
 import apiClient from "./client";
 
 /**
@@ -7,22 +7,33 @@ import apiClient from "./client";
  * @param page Número de página (inicia en 0)
  * @param size Cantidad de promociones por página
  * @param dayOfWeek Día opcional en que aplica la promoción (MONDAY … SUNDAY)
+ * @param categoryId ID opcional de la categoría
  */
 export const getPromotions = async (
   search?: string,
   page = 0,
   size = 10,
-  dayOfWeek?: string
+  dayOfWeek?: string,
+  categoryId?: string
 ): Promise<PageResponse<Promotion>> => {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
   if (dayOfWeek) params.append("dayOfWeek", dayOfWeek);
+  if (categoryId) params.append("categoryId", categoryId);
   params.append("page", page.toString());
   params.append("size", size.toString());
 
   const response = await apiClient.get<ApiResponse<PageResponse<Promotion>>>(
     `/promotions?${params.toString()}`
   );
+  return response.data.data;
+};
+
+/**
+ * Obtiene las categorías de promociones (HU 21) — público
+ */
+export const getCategories = async (): Promise<Category[]> => {
+  const response = await apiClient.get<ApiResponse<Category[]>>("/categories");
   return response.data.data;
 };
 

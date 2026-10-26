@@ -75,7 +75,7 @@ class PromotionControllerTest {
         @Test
         void getAll_esPublico_devuelve200() throws Exception {
                 UUID id = UUID.randomUUID();
-                when(promotionService.getActivePromotions(eq(null), eq(null), any()))
+                when(promotionService.getActivePromotions(eq(null), eq(null), eq(null), any()))
                                 .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
 
                 mockMvc.perform(get("/api/v1/promotions"))
@@ -86,7 +86,7 @@ class PromotionControllerTest {
         @Test
         void getAll_conFiltroDeDia_pasaElParametroAlService() throws Exception {
                 UUID id = UUID.randomUUID();
-                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.MONDAY), any()))
+                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.MONDAY), eq(null), any()))
                                 .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
 
                 mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "MONDAY"))
@@ -96,12 +96,24 @@ class PromotionControllerTest {
 
         @Test
         void getAll_conDiaSinResultados_devuelveListaVacia() throws Exception {
-                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.SUNDAY), any()))
+                when(promotionService.getActivePromotions(eq(null), eq(DayOfWeek.SUNDAY), eq(null), any()))
                                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
 
                 mockMvc.perform(get("/api/v1/promotions").param("dayOfWeek", "SUNDAY"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data.content").isEmpty());
+        }
+
+        @Test
+        void getAll_conFiltroDeCategoria_pasaElParametroAlService() throws Exception {
+                UUID id = UUID.randomUUID();
+                UUID categoryId = UUID.randomUUID();
+                when(promotionService.getActivePromotions(eq(null), eq(null), eq(categoryId), any()))
+                                .thenReturn(new PageResponse<>(List.of(samplePromotion(id)), 0, 20, 1, 1, true));
+
+                mockMvc.perform(get("/api/v1/promotions").param("categoryId", categoryId.toString()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
         }
 
         @Test

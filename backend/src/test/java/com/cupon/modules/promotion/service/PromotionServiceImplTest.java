@@ -2,8 +2,10 @@ package com.cupon.modules.promotion.service;
 
 import com.cupon.common.dto.PageResponse;
 import com.cupon.common.exception.ResourceNotFoundException;
+import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.Promotion;
 import com.cupon.modules.promotion.entity.PromotionStatus;
@@ -24,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
@@ -107,14 +110,14 @@ class PromotionServiceImplTest {
         Promotion promotion = buildPromotion(buildRestaurantProfile(buildUser()));
         Page<Promotion> page = new PageImpl<>(List.of(promotion), pageable, 1);
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(null), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(null), eq(null), eq(pageable)))
                 .thenReturn(page);
         when(promotionMapper.toResponse(any(Promotion.class))).thenReturn(mock(promotion));
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, null, pageable);
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, null, null, pageable);
 
         assertThat(result.content()).hasSize(1);
-        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, pageable);
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, null, pageable);
     }
 
     @Test
@@ -122,12 +125,12 @@ class PromotionServiceImplTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of());
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(null), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(null), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("pizza", null, pageable);
+        promotionService.getActivePromotions("pizza", null, null, pageable);
 
-        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", null, pageable);
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", null, null, pageable);
     }
 
     @Test
@@ -135,12 +138,12 @@ class PromotionServiceImplTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of());
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.MONDAY), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.MONDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions(null, DayOfWeek.MONDAY, pageable);
+        promotionService.getActivePromotions(null, DayOfWeek.MONDAY, null, pageable);
 
-        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.MONDAY, pageable);
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.MONDAY, null, pageable);
     }
 
     @Test
@@ -148,12 +151,12 @@ class PromotionServiceImplTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of());
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SUNDAY), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SUNDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("   ", DayOfWeek.SUNDAY, pageable);
+        promotionService.getActivePromotions("   ", DayOfWeek.SUNDAY, null, pageable);
 
-        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.SUNDAY, pageable);
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.SUNDAY, null, pageable);
     }
 
     @Test
@@ -161,12 +164,12 @@ class PromotionServiceImplTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of());
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(DayOfWeek.FRIDAY), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(DayOfWeek.FRIDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("pizza", DayOfWeek.FRIDAY, pageable);
+        promotionService.getActivePromotions("pizza", DayOfWeek.FRIDAY, null, pageable);
 
-        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", DayOfWeek.FRIDAY, pageable);
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", DayOfWeek.FRIDAY, null, pageable);
     }
 
     @Test
@@ -174,14 +177,39 @@ class PromotionServiceImplTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Promotion> page = new PageImpl<>(List.of(), pageable, 0);
 
-        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SATURDAY), eq(pageable)))
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SATURDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY,
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY, null,
                 pageable);
 
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isZero();
+    }
+
+    @Test
+    void getActivePromotions_soloCategoria_pasaCategoryIdAlRepositorio() {
+        Pageable pageable = PageRequest.of(0, 20);
+        UUID categoryId = UUID.randomUUID();
+        Page<Promotion> page = new PageImpl<>(List.of(), pageable, 0);
+
+        when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(null), eq(categoryId), eq(pageable)))
+                .thenReturn(page);
+
+        promotionService.getActivePromotions(null, null, categoryId, pageable);
+
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, categoryId, pageable);
+    }
+
+    @Test
+    void getCategories_devuelveCategoriasOrdenadasPorNombre() {
+        Category sushi = Category.builder().name("Sushi").description("Rolls").build();
+        sushi.setId(UUID.randomUUID());
+        when(categoryRepository.findAll(Sort.by("name"))).thenReturn(List.of(sushi));
+
+        List<CategoryResponse> result = promotionService.getCategories();
+
+        assertThat(result).containsExactly(new CategoryResponse(sushi.getId(), "Sushi", "Rolls"));
     }
 
     @Test

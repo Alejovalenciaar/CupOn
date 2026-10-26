@@ -1,6 +1,7 @@
 package com.cupon.modules.promotion.service;
 
 import com.cupon.common.dto.PageResponse;
+import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.RedemptionResponse;
@@ -9,11 +10,15 @@ import com.cupon.modules.promotion.entity.PromotionStatus;
 import org.springframework.data.domain.Pageable;
 
 import java.time.DayOfWeek;
+import java.util.List;
 import java.util.UUID;
 
 public interface PromotionService {
 
-    PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable);
+    PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
+            Pageable pageable);
+
+    List<CategoryResponse> getCategories();
 
     PromotionResponse getPromotionById(UUID id);
 

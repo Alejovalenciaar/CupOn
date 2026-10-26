@@ -52,7 +52,7 @@ public class PromotionCatalogTools {
         String textoBusqueda = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
 
         PageResponse<PromotionResponse> resultado = promotionService.getActivePromotions(
-                textoBusqueda, dia, PageRequest.of(0, MAX_RESULTADOS));
+                textoBusqueda, dia, null, PageRequest.of(0, MAX_RESULTADOS));
 
         if (resultado.content().isEmpty()) {
             return "No se encontraron promociones activas que coincidan con esos criterios.";

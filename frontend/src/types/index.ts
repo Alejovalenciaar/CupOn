@@ -102,6 +102,12 @@ export interface Restaurant {
 
 // --- Promotion ---
 
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface CreatePromotionRequest {
   title: string;
   description?: string;

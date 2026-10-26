@@ -60,7 +60,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarPromociones_sinResultados_devuelveMensajeClaroYNoInventaDatos() {
-        when(promotionService.getActivePromotions(eq("sushi"), isNull(), any(Pageable.class)))
+        when(promotionService.getActivePromotions(eq("sushi"), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true));
 
         String resultado = promotionCatalogTools.buscarPromociones("sushi", null);
@@ -70,7 +70,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarPromociones_conResultados_incluyeLosDatosRealesDeLaPromocion() {
-        when(promotionService.getActivePromotions(eq("pizza"), isNull(), any(Pageable.class)))
+        when(promotionService.getActivePromotions(eq("pizza"), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(promocionPizza()), 0, 10, 1, 1, true));
 
         String resultado = promotionCatalogTools.buscarPromociones("pizza", null);
@@ -85,7 +85,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarPromociones_conDiaSemanaInvalido_ignoraElFiltroEnVezDeFallar() {
-        when(promotionService.getActivePromotions(any(), isNull(), any(Pageable.class)))
+        when(promotionService.getActivePromotions(any(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true));
 
         promotionCatalogTools.buscarPromociones(null, "no-es-un-dia-valido");
@@ -93,7 +93,7 @@ class PromotionCatalogToolsTest {
         // El día inválido se traduce a null en vez de lanzar una excepción que
         // interrumpiría la respuesta del chatbot.
         org.mockito.Mockito.verify(promotionService)
-                .getActivePromotions(isNull(), isNull(), any(Pageable.class));
+                .getActivePromotions(isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.cupon.modules.promotion.service;
 
 import com.cupon.common.dto.PageResponse;
 import com.cupon.common.exception.ResourceNotFoundException;
+import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.entity.Category;
@@ -21,12 +22,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,12 +46,21 @@ public class PromotionServiceImpl implements PromotionService {
     private final PromotionMapper promotionMapper;
 
     @Override
-    @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #dayOfWeek + '_' + #pageable.pageNumber")
-    public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, Pageable pageable) {
+    @Cacheable(value = "promotions",
+            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #pageable.pageNumber")
+    public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
+            Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
         Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
-                pageable);
+                categoryId, pageable);
         return PageResponse.of(page.map(promotionMapper::toResponse));
+    }
+
+    @Override
+    public List<CategoryResponse> getCategories() {
+        return categoryRepository.findAll(Sort.by("name")).stream()
+                .map(c -> new CategoryResponse(c.getId(), c.getName(), c.getDescription()))
+                .toList();
     }
 
     @Override

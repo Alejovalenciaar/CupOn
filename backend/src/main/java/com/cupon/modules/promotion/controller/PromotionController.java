@@ -47,9 +47,10 @@ public class PromotionController {
         public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getAll(
                         @RequestParam(required = false) String search,
                         @RequestParam(required = false) DayOfWeek dayOfWeek,
+                        @RequestParam(required = false) UUID categoryId,
                         @PageableDefault(size = 20) Pageable pageable) {
-                return ResponseEntity.ok(
-                                ApiResponse.success(promotionService.getActivePromotions(search, dayOfWeek, pageable)));
+                return ResponseEntity.ok(ApiResponse.success(
+                                promotionService.getActivePromotions(search, dayOfWeek, categoryId, pageable)));
         }
 
         @GetMapping("/{id}")

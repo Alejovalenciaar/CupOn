@@ -41,6 +41,7 @@ public class SecurityConfig {
                         // --- Public endpoints ---
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/promotions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/restaurants/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/chatbot/chat").permitAll()
                         // --- Swagger / OpenAPI ---

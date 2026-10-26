@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getPromotions, toggleFavorite, getMyFavorites } from "@/api/promotionServices";
+import { getPromotions, toggleFavorite, getMyFavorites, getCategories } from "@/api/promotionServices";
 import { getRestaurants } from "@/api/restaurantServices";
-import type { Promotion, Restaurant } from "@/types";
+import type { Category, Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CouponCard from "./components/CouponCard";
 import RestaurantCard from "./components/RestaurantCard";
 import CouponDetailModal from "./components/CouponDetailModal";
 
-const CATEGORIES = [
-  { name: "Todos", emoji: "🍽️", query: "" },
-  { name: "Cafés", emoji: "☕", query: "Café" },
-  { name: "Hamburguesas", emoji: "🍔", query: "Burger" },
-  { name: "Pizza", emoji: "🍕", query: "Pizza" },
-  { name: "Sushi", emoji: "🍣", query: "Sushi" },
-  { name: "Tacos", emoji: "🌮", query: "Taco" },
-  { name: "Postres", emoji: "🍰", query: "Postre" },
-  { name: "Bares", emoji: "🍸", query: "Bar" },
-];
+// Nombre de categoría (seed V1 / DataSeeder) → emoji. Las no listadas usan 🍽️.
+const CATEGORY_EMOJIS: Record<string, string> = {
+  "Comida Rápida": "🍔",
+  "Comida Mexicana": "🌮",
+  Sushi: "🍣",
+  Postres: "🍰",
+  Bebidas: "☕",
+  "Comida Saludable": "🥗",
+  Italiana: "🍕",
+  Mariscos: "🦐",
+};
 
 const WEEK_DAYS = [
   { key: "", label: "Todos" },
@@ -51,6 +52,7 @@ export default function CatalogPage() {
   const [activeSearch, setActiveSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [activeDay, setActiveDay] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Restaurantes
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -75,6 +77,9 @@ export default function CatalogPage() {
   useEffect(() => {
     fetchPromotions();
     fetchRestaurants();
+    getCategories()
+      .then(setCategories)
+      .catch(() => {});
 
     // Sincronizar favoritos si hay sesión de cliente
     if (currentUser?.role === "ROLE_CLIENTE") {
@@ -95,16 +100,18 @@ export default function CatalogPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPromotions = (query?: string, day?: string) => {
+  const fetchPromotions = (query?: string, day?: string, categoryId?: string) => {
     setLoadingPromos(true);
     setErrorPromos(null);
     const q = query !== undefined ? query : activeSearch;
     const dow = day !== undefined ? day : activeDay;
-    getPromotions(q || undefined, 0, 16, dow || undefined)
+    const cat = categoryId !== undefined ? categoryId : activeCategory;
+    getPromotions(q || undefined, 0, 16, dow || undefined, cat || undefined)
       .then((d) => {
         setPromotions(d.content);
         setActiveSearch(q || "");
         setActiveDay(dow || "");
+        setActiveCategory(cat || "");
       })
       .catch(() => setErrorPromos("No se pudieron cargar los cupones."))
       .finally(() => setLoadingPromos(false));
@@ -120,15 +127,12 @@ export default function CatalogPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setActiveCategory("");
     fetchPromotions(searchTerm);
     document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleCategory = (cat: typeof CATEGORIES[0]) => {
-    setActiveCategory(cat.query);
-    setSearchTerm(cat.query);
-    fetchPromotions(cat.query);
+  const handleCategory = (categoryId: string) => {
+    fetchPromotions(undefined, undefined, categoryId);
     document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -158,6 +162,8 @@ export default function CatalogPage() {
     localStorage.removeItem("cupon_user");
     setCurrentUser(null);
   };
+
+  const activeCategoryName = categories.find((c) => c.id === activeCategory)?.name;
 
   const displayedPromos = showFavoritesOnly
     ? promotions.filter((p) => favoriteIds.includes(p.id))
@@ -264,11 +270,7 @@ export default function CatalogPage() {
             </h2>
             {activeCategory && (
               <button
-                onClick={() => {
-                  setActiveCategory("");
-                  setSearchTerm("");
-                  fetchPromotions("");
-                }}
+                onClick={() => fetchPromotions(undefined, undefined, "")}
                 className="text-xs text-brand-600 hover:text-brand-700 font-medium"
               >
                 Limpiar filtro ✕
@@ -277,22 +279,23 @@ export default function CatalogPage() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {CATEGORIES.map((cat) => {
-              const isActive =
-                (cat.query === "" && !activeCategory) || activeCategory === cat.query;
+            {[{ id: "", name: "Todos" } as Category, ...categories].map((cat) => {
+              const isActive = activeCategory === cat.id;
 
               return (
                 <button
-                  key={cat.name}
+                  key={cat.id || "all"}
                   type="button"
-                  onClick={() => handleCategory(cat)}
+                  aria-pressed={isActive}
+                  title={cat.description}
+                  onClick={() => handleCategory(cat.id)}
                   className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-button text-sm border whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-brand-600 border-brand-600 text-white font-medium shadow-subtle"
                       : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-normal"
                   }`}
                 >
-                  <span>{cat.emoji}</span>
+                  <span>{CATEGORY_EMOJIS[cat.name] || "🍽️"}</span>
                   <span>{cat.name}</span>
                 </button>
               );
@@ -327,10 +330,14 @@ export default function CatalogPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-4">
             <div>
               <h2 className="font-semibold tracking-tight text-content-primary text-xl">
-                {activeSearch ? `Ofertas para "${activeSearch}"` : "Cupones vigentes"}
+                {activeSearch
+                  ? `Ofertas para "${activeSearch}"`
+                  : activeCategoryName
+                  ? `Ofertas en ${activeCategoryName}`
+                  : "Cupones vigentes"}
               </h2>
               <p className="text-xs text-content-secondary mt-0.5">
-                {activeSearch
+                {activeSearch || activeCategoryName
                   ? "Resultados filtrados en tiempo real"
                   : "Promociones y beneficios gastronómicos activos"}
               </p>
@@ -389,6 +396,8 @@ export default function CatalogPage() {
                   ? "Aún no tienes cupones guardados"
                   : activeSearch
                   ? `No se encontraron ofertas para "${activeSearch}"`
+                  : activeCategoryName
+                  ? `No hay ofertas en ${activeCategoryName} por ahora`
                   : "No hay ofertas para el día seleccionado"}
               </h3>
               <p className="text-xs text-content-secondary mt-1 mb-4">
@@ -401,8 +410,7 @@ export default function CatalogPage() {
                 onClick={() => {
                   setShowFavoritesOnly(false);
                   setSearchTerm("");
-                  setActiveCategory("");
-                  fetchPromotions("", "");
+                  fetchPromotions("", "", "");
                 }}
                 className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-4 py-2 rounded-button transition-colors"
               >
