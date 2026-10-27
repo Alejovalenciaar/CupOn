@@ -51,6 +51,12 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
+  # --- Subida de archivos ---
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 # --- JWT (custom properties) ---
 app:
   jwt:
@@ -60,6 +66,13 @@ app:
     url: ${FRONTEND_URL:http://localhost:5173}
   password-reset:
     expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:30}
+# --- cloudinary ---------
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    folder: ${CLOUDINARY_FOLDER:cupon}
+
 
 # --- OpenAPI / Swagger ---
 springdoc:
@@ -82,3 +95,4 @@ logging:
     com.cupon: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  

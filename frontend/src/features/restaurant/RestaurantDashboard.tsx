@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
 import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "@/api/promotionServices";
+import { ImageUploader } from "@/components/ImageUpLoader";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -631,26 +632,14 @@ export default function RestaurantDashboard({
                         </Field>
                       </div>
 
-                      <Field label="URL del logo o imagen representativa" hint="Usa una URL de imagen pública (Unsplash, S3, etc.)">
-                        <input
-                          type="url"
-                          placeholder="https://images.unsplash.com/..."
-                          className={inputCls}
-                          value={profileForm.logoUrl || ""}
-                          onChange={(e) => setProfileForm({ ...profileForm, logoUrl: e.target.value })}
-                        />
-                        {profileForm.logoUrl && (
-                          <div className="mt-2 flex items-center gap-3 p-2 bg-surface-muted border border-surface-border rounded-button">
-                            <img
-                              src={profileForm.logoUrl}
-                              alt="Logo preview"
-                              className="w-12 h-12 rounded-button object-cover border border-surface-border"
-                              onError={(e) => ((e.target as HTMLElement).style.display = "none")}
-                            />
-                            <span className="text-xs text-content-secondary">Vista previa del logo</span>
-                          </div>
-                        )}
-                      </Field>
+                      <ImageUploader
+                        label="Logo o imagen del restaurante"
+                        folder="logos"
+                        aspectRatio="square"
+                        value={profileForm.logoUrl}
+                        onChange={(url) => setProfileForm({ ...profileForm, logoUrl: url })}
+                        hint="Sube el logo de tu restaurante (JPG, PNG o WEBP, máx. 5MB)"
+                      />
 
                       <Field label="Descripción / Especialidad">
                         <textarea
@@ -805,26 +794,14 @@ export default function RestaurantDashboard({
                   </Field>
                 </div>
 
-                <Field label="URL de imagen de la oferta">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    className={inputCls}
-                    value={promoForm.imageUrl || ""}
-                    onChange={(e) => setPromoForm({ ...promoForm, imageUrl: e.target.value })}
-                  />
-                  {promoForm.imageUrl && (
-                    <div className="mt-2 flex items-center gap-3 p-2 bg-surface-muted border border-surface-border rounded-button">
-                      <img
-                        src={promoForm.imageUrl}
-                        alt="Preview"
-                        className="w-16 h-12 rounded-button object-cover border border-surface-border"
-                        onError={(e) => ((e.target as HTMLElement).style.display = "none")}
-                      />
-                      <span className="text-xs text-content-secondary">Así se verá en las tarjetas</span>
-                    </div>
-                  )}
-                </Field>
+                <ImageUploader
+                  label="Imagen de la oferta"
+                  folder="promotions"
+                  aspectRatio="video"
+                  value={promoForm.imageUrl}
+                  onChange={(url) => setPromoForm({ ...promoForm, imageUrl: url })}
+                  hint="Sube una foto atractiva del plato o promoción (máx. 5MB)"
+                />
 
                 <Field label="Descripción / condiciones">
                   <textarea

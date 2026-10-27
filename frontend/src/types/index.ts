@@ -161,3 +161,14 @@ export interface RedemptionResponse {
   remainingRedemptions: number; // -1 = ilimitado
   redeemedAt: string;
 }
+
+// ---- Files / Upload ----
+export interface FileUploadResponse {
+  url: string;
+  publicId: string;
+  format: string;
+  size: number; // bytes
+  width: number;
+  height: number;
+}
+
