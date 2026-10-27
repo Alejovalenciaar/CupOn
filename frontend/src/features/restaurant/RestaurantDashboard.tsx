@@ -46,7 +46,7 @@ export default function RestaurantDashboard({
   // Profile form
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UpdateRestaurantRequest>({
-    businessName: "", description: "", address: "", phoneNumber: "", logoUrl: "",
+    businessName: "", cuisineType: "", description: "", address: "", phoneNumber: "", logoUrl: "",
   });
 
   // Promo modal
@@ -82,6 +82,7 @@ export default function RestaurantDashboard({
       setPromotions(promoData.content);
       setProfileForm({
         businessName: restData.businessName || "",
+        cuisineType: restData.cuisineType || "",
         description: restData.description || "",
         address: restData.address || "",
         phoneNumber: restData.phoneNumber || "",
@@ -600,15 +601,26 @@ export default function RestaurantDashboard({
                     </div>
 
                     <form onSubmit={handleSaveProfile} className="space-y-4">
-                      <Field label="Nombre comercial *">
-                        <input
-                          type="text"
-                          required
-                          className={inputCls}
-                          value={profileForm.businessName || ""}
-                          onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
-                        />
-                      </Field>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Nombre comercial *">
+                          <input
+                            type="text"
+                            required
+                            className={inputCls}
+                            value={profileForm.businessName || ""}
+                            onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
+                          />
+                        </Field>
+                        <Field label="Categoría / Tipo de cocina" hint="Ej: Hamburguesas, Sushi, Mexicana, Café, etc.">
+                          <input
+                            type="text"
+                            placeholder="Ej. Hamburguesas, Sushi, Parrilla"
+                            className={inputCls}
+                            value={profileForm.cuisineType || ""}
+                            onChange={(e) => setProfileForm({ ...profileForm, cuisineType: e.target.value })}
+                          />
+                        </Field>
+                      </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field label="Dirección del local *">

@@ -6,14 +6,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record RestaurantResponse(
-        UUID id,
-        String businessName,
-        String description,
-        String address,
-        String logoUrl,
-        String phoneNumber,
-        ApprovalStatus approvalStatus,
-        String ownerName,
-        LocalDateTime createdAt
-) {
+                UUID id,
+                String businessName,
+                String description,
+                String cuisineType,
+                String address,
+                String logoUrl,
+                String phoneNumber,
+                ApprovalStatus approvalStatus,
+                String ownerName,
+                LocalDateTime createdAt) {
 }

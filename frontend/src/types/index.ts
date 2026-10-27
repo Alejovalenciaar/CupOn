@@ -81,6 +81,7 @@ export interface UpdateUserRequest {
 
 export interface UpdateRestaurantRequest {
   businessName?: string;
+  cuisineType?: string;
   description?: string;
   address?: string;
   logoUrl?: string;
@@ -92,6 +93,7 @@ export interface Restaurant {
   id: string;
   businessName: string;
   description: string;
+  cuisineType?: string;
   address: string;
   logoUrl: string;
   phoneNumber: string;

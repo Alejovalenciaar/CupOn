@@ -31,6 +31,9 @@ public class RestaurantProfile extends BaseEntity {
     @Column(name = "business_name", nullable = false, length = 200)
     private String businessName;
 
+    @Column(name = "cuisine_type", length = 100)
+    private String cuisineType;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

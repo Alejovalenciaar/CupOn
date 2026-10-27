@@ -73,7 +73,7 @@ class AdminServiceImplTest {
 
     private RestaurantResponse buildResponse(RestaurantProfile profile) {
         return new RestaurantResponse(
-                profile.getId(), profile.getBusinessName(), "desc", "Calle 1",
+                profile.getId(), profile.getBusinessName(), "desc", profile.getCuisineType(), "Calle 1",
                 null, "3001234567", profile.getApprovalStatus(),
                 profile.getUser().getEmail(), LocalDateTime.now());
     }

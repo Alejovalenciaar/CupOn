@@ -23,52 +23,65 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class RestaurantServiceImpl implements RestaurantService {
 
-    private final RestaurantProfileRepository restaurantProfileRepository;
-    private final UserRepository userRepository;
-    private final RestaurantMapper restaurantMapper;
+        private final RestaurantProfileRepository restaurantProfileRepository;
+        private final UserRepository userRepository;
+        private final RestaurantMapper restaurantMapper;
 
-    @Override
-    public PageResponse<RestaurantResponse> getApprovedRestaurants(Pageable pageable) {
-        Page<RestaurantResponse> page = restaurantProfileRepository
-                .findByApprovalStatus(ApprovalStatus.APPROVED, pageable)
-                .map(restaurantMapper::toResponse);
-        return PageResponse.of(page);
-    }
+        @Override
+        public PageResponse<RestaurantResponse> getApprovedRestaurants(String search, String cuisineType,
+                        Pageable pageable) {
+                String cleanSearch = (search != null && !search.isBlank() ? search.trim() : null);
+                String cleanCuisine = (cuisineType != null && !cuisineType.isBlank() ? cuisineType.trim() : null);
 
-    @Override
-    public RestaurantResponse getRestaurantById(UUID id) {
-        RestaurantProfile profile = restaurantProfileRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Restaurante", "id", id));
-        return restaurantMapper.toResponse(profile);
-    }
+                Page<RestaurantResponse> page = restaurantProfileRepository
+                                .findApprovedWithFilters(ApprovalStatus.APPROVED, cleanSearch, cleanCuisine, pageable)
+                                .map(restaurantMapper::toResponse);
+                return PageResponse.of(page);
+        }
 
-    @Override
-    public RestaurantResponse getMyRestaurant(String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userEmail));
+        @Override
+        public RestaurantResponse getRestaurantById(UUID id) {
+                RestaurantProfile profile = restaurantProfileRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Restaurante", "id", id));
+                return restaurantMapper.toResponse(profile);
+        }
 
-        RestaurantProfile profile = restaurantProfileRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Perfil de restaurante", "userId", user.getId()));
+        @Override
+        public RestaurantResponse getMyRestaurant(String userEmail) {
+                User user = userRepository.findByEmail(userEmail)
+                                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userEmail));
 
-        return restaurantMapper.toResponse(profile);
-    }
+                RestaurantProfile profile = restaurantProfileRepository.findByUserId(user.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Perfil de restaurante", "userId",
+                                                user.getId()));
 
-    @Override
-    @Transactional
-    public RestaurantResponse updateMyRestaurant(String userEmail, UpdateRestaurantDto request) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userEmail));
+                return restaurantMapper.toResponse(profile);
+        }
 
-        RestaurantProfile profile = restaurantProfileRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Perfil de restaurante", "userId", user.getId()));
+        @Override
+        @Transactional
+        public RestaurantResponse updateMyRestaurant(String userEmail, UpdateRestaurantDto request) {
+                User user = userRepository.findByEmail(userEmail)
+                                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userEmail));
 
-        if (request.businessName() != null) profile.setBusinessName(request.businessName());
-        if (request.description() != null) profile.setDescription(request.description());
-        if (request.address() != null) profile.setAddress(request.address());
-        if (request.logoUrl() != null) profile.setLogoUrl(request.logoUrl());
-        if (request.phoneNumber() != null) profile.setPhoneNumber(request.phoneNumber());
+                RestaurantProfile profile = restaurantProfileRepository.findByUserId(user.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Perfil de restaurante", "userId",
+                                                user.getId()));
 
-        RestaurantProfile saved = restaurantProfileRepository.save(profile);
-        return restaurantMapper.toResponse(saved);
-    }
+                if (request.businessName() != null)
+                        profile.setBusinessName(request.businessName());
+                if (request.description() != null)
+                        profile.setDescription(request.description());
+                if (request.address() != null)
+                        profile.setAddress(request.address());
+                if (request.logoUrl() != null)
+                        profile.setLogoUrl(request.logoUrl());
+                if (request.phoneNumber() != null)
+                        profile.setPhoneNumber(request.phoneNumber());
+                if (request.cuisineType() != null)
+                        profile.setCuisineType(request.cuisineType());
+
+                RestaurantProfile saved = restaurantProfileRepository.save(profile);
+                return restaurantMapper.toResponse(saved);
+        }
 }

@@ -45,6 +45,7 @@ export default function CatalogPage() {
   const [loadingRest, setLoadingRest] = useState(true);
   const [errorRest, setErrorRest] = useState<string | null>(null);
   const [restaurantSearch, setRestaurantSearch] = useState("");
+  const [selectedCuisine, setSelectedCuisine] = useState("");
 
   // Favoritos
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -62,7 +63,6 @@ export default function CatalogPage() {
   // ── Carga inicial ────────────────────────────────────────────────────────
   useEffect(() => {
     fetchPromotions();
-    fetchRestaurants();
 
     // Sincronizar favoritos si hay sesión de cliente
     if (currentUser?.role === "ROLE_CLIENTE") {
@@ -96,13 +96,21 @@ export default function CatalogPage() {
       .finally(() => setLoadingPromos(false));
   };
 
-  const fetchRestaurants = () => {
+  const fetchRestaurants = (search?: string, cuisine?: string) => {
     setLoadingRest(true);
-    getRestaurants(0, 9)
+    setErrorRest(null);
+    getRestaurants(0, 18, search, cuisine)
       .then((d) => setRestaurants(d.content))
       .catch(() => setErrorRest("No se pudieron cargar los restaurantes aliados."))
       .finally(() => setLoadingRest(false));
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRestaurants(restaurantSearch, selectedCuisine);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [restaurantSearch, selectedCuisine]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,13 +157,7 @@ export default function CatalogPage() {
     ? promotions.filter((p) => favoriteIds.includes(p.id))
     : promotions;
 
-  const filteredRestaurants = restaurantSearch.trim()
-    ? restaurants.filter(
-        (r) =>
-          r.businessName.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
-          r.address.toLowerCase().includes(restaurantSearch.toLowerCase())
-      )
-    : restaurants;
+  const displayedRestaurants = restaurants;
 
   return (
     <div className="min-h-screen bg-surface-canvas text-content-primary antialiased flex flex-col">
@@ -400,15 +402,35 @@ export default function CatalogPage() {
               </p>
             </div>
 
-            <div className="w-full sm:w-64">
-              <input
-                id="restaurant-search-input"
-                type="text"
-                placeholder="Buscar por local o zona..."
-                value={restaurantSearch}
-                onChange={(e) => setRestaurantSearch(e.target.value)}
-                className="w-full bg-white border border-surface-border rounded-button px-3 py-1.5 text-xs text-content-primary placeholder:text-content-muted outline-none focus:border-brand-500 shadow-subtle"
-              />
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <select
+                id="restaurant-cuisine-filter"
+                aria-label="Filtrar por tipo de cocina"
+                value={selectedCuisine}
+                onChange={(e) => setSelectedCuisine(e.target.value)}
+                className="bg-white border border-surface-border rounded-button px-3 py-1.5 text-xs text-content-primary outline-none focus:border-brand-500 shadow-subtle cursor-pointer"
+              >
+                <option value="">Todas las cocinas</option>
+                <option value="Hamburguesas">Hamburguesas</option>
+                <option value="Pizza">Pizza</option>
+                <option value="Sushi">Sushi</option>
+                <option value="Mexicana">Mexicana</option>
+                <option value="Café">Café</option>
+                <option value="Postres">Postres</option>
+                <option value="Parrilla">Parrilla</option>
+                <option value="Italiana">Italiana</option>
+              </select>
+
+              <div className="w-full sm:w-64">
+                <input
+                  id="restaurant-search-input"
+                  type="text"
+                  placeholder="Buscar por local o descripción..."
+                  value={restaurantSearch}
+                  onChange={(e) => setRestaurantSearch(e.target.value)}
+                  className="w-full bg-white border border-surface-border rounded-button px-3 py-1.5 text-xs text-content-primary placeholder:text-content-muted outline-none focus:border-brand-500 shadow-subtle"
+                />
+              </div>
             </div>
           </div>
 
@@ -433,17 +455,17 @@ export default function CatalogPage() {
             </div>
           )}
 
-          {!loadingRest && !errorRest && filteredRestaurants.length === 0 && (
+          {!loadingRest && !errorRest && displayedRestaurants.length === 0 && (
             <div className="bg-surface-card border border-surface-border rounded-card p-8 text-center">
               <p className="text-xs text-content-secondary">
-                No encontramos locales que coincidan con "{restaurantSearch}".
+                No encontramos locales que coincidan con los filtros aplicados.
               </p>
             </div>
           )}
 
-          {!loadingRest && !errorRest && filteredRestaurants.length > 0 && (
+          {!loadingRest && !errorRest && displayedRestaurants.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRestaurants.map((restaurant) => (
+              {displayedRestaurants.map((restaurant) => (
                 <RestaurantCard
                   key={restaurant.id}
                   restaurant={restaurant}

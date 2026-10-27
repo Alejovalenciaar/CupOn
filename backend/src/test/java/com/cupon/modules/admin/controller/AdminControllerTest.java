@@ -57,7 +57,7 @@ class AdminControllerTest {
 
     private RestaurantResponse sampleRestaurant(UUID id) {
         return new RestaurantResponse(
-                id, "Pizza Feliz", "desc", "Calle 1",
+                id, "Pizza Feliz", "desc", "Pizzería", "Calle 1",
                 null, "3001234567", ApprovalStatus.PENDING,
                 "owner@cupon.com", LocalDateTime.now());
     }

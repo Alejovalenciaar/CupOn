@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface RestaurantService {
 
-    PageResponse<RestaurantResponse> getApprovedRestaurants(Pageable pageable);
+    PageResponse<RestaurantResponse> getApprovedRestaurants(String search, String cuisineType, Pageable pageable);
 
     RestaurantResponse getRestaurantById(UUID id);
 

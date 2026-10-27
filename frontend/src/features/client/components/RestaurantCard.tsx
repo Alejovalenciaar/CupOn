@@ -32,9 +32,16 @@ export default function RestaurantCard({
 
       {/* Contenido Editorial */}
       <div className="p-4 flex flex-col flex-1">
-        <h4 className="font-semibold tracking-tight text-content-primary text-base mb-1 group-hover:text-brand-600 transition-colors">
-          {restaurant.businessName}
-        </h4>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h4 className="font-semibold tracking-tight text-content-primary text-base group-hover:text-brand-600 transition-colors">
+            {restaurant.businessName}
+          </h4>
+          {restaurant.cuisineType && (
+            <span className="shrink-0 bg-brand-50 text-brand-700 font-medium px-2 py-0.5 rounded-button text-[11px] border border-brand-200">
+              {restaurant.cuisineType}
+            </span>
+          )}
+        </div>
 
         <p className="text-xs text-content-secondary line-clamp-2 mb-3 flex-1">
           {restaurant.description || 'Especialidad gastronómica con ingredientes seleccionados y ambiente acogedor.'}
