@@ -167,7 +167,7 @@ export interface FileUploadResponse {
   url: string;
   publicId: string;
   format: string;
-  size: number; // bytes
+  size: number; // tamaño en bytes por el backend 
   width: number;
   height: number;
 }
