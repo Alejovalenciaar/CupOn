@@ -3,6 +3,31 @@ import { Promotion, RedemptionResponse } from '@/types';
 import { redeemPromotion, registerPromotionView } from '@/api/promotionServices';
 import ActiveDaysPills from './ActiveDaysPills';
 
+const shareButtonClass =
+  'bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium py-2 rounded-button transition-colors flex items-center justify-center text-center';
+
+/**
+ * Copia texto al portapapeles. Si la API Clipboard no está disponible
+ * (HTTP sin TLS o navegador antiguo), usa un textarea temporal.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  }
+}
+
 interface CouponDetailModalProps {
   promo: Promotion;
   isFavorite: boolean;
@@ -29,23 +54,32 @@ export default function CouponDetailModal({
   const days = (promo as any).daysOfWeek || [];
 
   const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code).then(() => {
+    copyToClipboard(code).then((ok) => {
+      if (!ok) return;
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
     });
   };
 
-  const handleShare = () => {
-    const text = `¡Descubre este cupón en CupOn! ${promo.title} en ${promo.restaurantName} (Código: ${promo.code})`;
-    if (navigator.share) {
-      navigator.share({ title: promo.title, text, url: window.location.href }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(`${text} - ${window.location.href}`).then(() => {
-        setCopiedShare(true);
-        setTimeout(() => setCopiedShare(false), 2000);
-      });
-    }
+  // Enlace público del cupón (HU 24 / HU 27)
+  const shareUrl = `${window.location.origin}/promo/${promo.id}`;
+  const shareText = `¡Descubre este cupón en CupOn! ${promo.title} en ${promo.restaurantName}`;
+  const isRedeemable = promo.status === 'ACTIVE';
+
+  const handleNativeShare = () => {
+    navigator.share({ title: promo.title, text: shareText, url: shareUrl }).catch(() => {});
   };
+
+  const handleCopyLink = () => {
+    copyToClipboard(shareUrl).then((ok) => {
+      if (!ok) return;
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    });
+  };
+
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   const handleRedeem = async () => {
     setRedeemLoading(true);
@@ -165,7 +199,11 @@ export default function CouponDetailModal({
           </div>
 
           {/* Canje en vivo */}
-          {redeemResult ? (
+          {!isRedeemable ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-card text-center">
+              Este cupón ya no está disponible para canje.
+            </div>
+          ) : redeemResult ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-card p-3.5 text-center text-emerald-800">
               <span className="text-xl block mb-1">✅</span>
               <p className="text-xs font-bold">¡Cupón canjeado con éxito!</p>
@@ -191,19 +229,51 @@ export default function CouponDetailModal({
             </div>
           )}
 
+          {/* Compartir (HU 24 / HU 27) */}
+          <div className="space-y-2 pt-1">
+            <span className="text-xs font-medium text-content-secondary block">Compartir oferta</span>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={shareButtonClass}
+              >
+                {copiedShare ? '¡Copiado! ✓' : '🔗 Copiar enlace'}
+              </button>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={shareButtonClass}
+              >
+                WhatsApp
+              </a>
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={shareButtonClass}
+              >
+                Facebook
+              </a>
+            </div>
+          </div>
+
           {/* Acciones Secundarias */}
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleShare}
-              className="flex-1 bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium py-2 rounded-button transition-colors flex items-center justify-center gap-1"
-            >
-              <span>{copiedShare ? '¡Enlace copiado! ✓' : 'Compartir oferta'}</span>
-            </button>
+          <div className="flex items-center gap-2">
+            {typeof navigator.share === 'function' && (
+              <button
+                type="button"
+                onClick={handleNativeShare}
+                className="flex-1 bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium py-2 rounded-button transition-colors flex items-center justify-center gap-1"
+              >
+                <span>Más opciones…</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={(e) => onToggleFavorite(promo.id, e)}
-              className="bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium px-4 py-2 rounded-button transition-colors flex items-center gap-1"
+              className="flex-1 bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium px-4 py-2 rounded-button transition-colors flex items-center justify-center gap-1"
             >
               <span>{isFavorite ? '❤️ Guardado' : '🤍 Guardar'}</span>
             </button>

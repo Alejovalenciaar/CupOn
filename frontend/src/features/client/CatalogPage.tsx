@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getPromotions, toggleFavorite, getMyFavorites, getCategories } from "@/api/promotionServices";
+import { useNavigate, useParams } from "react-router-dom";
+import { getPromotions, toggleFavorite, getMyFavorites, getCategories, getSharedPromotion } from "@/api/promotionServices";
 import { getRestaurants } from "@/api/restaurantServices";
 import type { Category, Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
@@ -34,6 +34,8 @@ const WEEK_DAYS = [
 
 export default function CatalogPage() {
   const navigate = useNavigate();
+  // Promoción abierta desde un enlace compartido (/promo/:id)
+  const { id: sharedPromoId } = useParams<{ id: string }>();
 
   // Sesión
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(() => {
@@ -73,6 +75,7 @@ export default function CatalogPage() {
 
   // Modal detalle
   const [selected, setSelected] = useState<Promotion | null>(null);
+  const [sharedError, setSharedError] = useState<string | null>(null);
 
   // ── Carga inicial ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -89,6 +92,9 @@ export default function CatalogPage() {
         .catch(() => {});
     }
 
+    // Un enlace compartido se muestra a cualquier rol, sin redirigir
+    if (sharedPromoId) return;
+
     // Redirigir según rol
     if (currentUser?.role === "ROLE_RESTAURANTE") {
       navigate("/restaurant");
@@ -100,6 +106,20 @@ export default function CatalogPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Enlace compartido ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!sharedPromoId) return;
+    setSharedError(null);
+    getSharedPromotion(sharedPromoId)
+      .then(setSelected)
+      .catch(() => setSharedError("El cupón compartido no existe o ya no está disponible."));
+  }, [sharedPromoId]);
+
+  const handleCloseDetail = () => {
+    setSelected(null);
+    if (sharedPromoId) navigate("/", { replace: true });
+  };
 
   const fetchPromotions = (query?: string, day?: string, categoryId?: string, popular?: boolean) => {
     setLoadingPromos(true);
@@ -190,6 +210,22 @@ export default function CatalogPage() {
       />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8 space-y-12">
+        {sharedError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-card flex items-center justify-between gap-3">
+            <span>{sharedError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSharedError(null);
+                navigate("/", { replace: true });
+              }}
+              className="text-xs font-semibold hover:underline"
+            >
+              Ver catálogo
+            </button>
+          </div>
+        )}
+
         {/* ── HERO SECTION EDITORIAL ─────────────────────────────────────────── */}
         <section
           id="inicio"
@@ -550,7 +586,7 @@ export default function CatalogPage() {
         <CouponDetailModal
           promo={selected}
           isFavorite={favoriteIds.includes(selected.id)}
-          onClose={() => setSelected(null)}
+          onClose={handleCloseDetail}
           onToggleFavorite={handleToggleFavorite}
         />
       )}

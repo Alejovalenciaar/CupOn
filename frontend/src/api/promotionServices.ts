@@ -72,15 +72,35 @@ const writeViewedPromotions = (ids: string[]) => {
  * petición para que el doble montaje de StrictMode no la cuente dos veces.
  */
 export const registerPromotionView = async (id: string): Promise<void> => {
-  const viewed = readViewedPromotions();
-  if (viewed.includes(id)) return;
-  writeViewedPromotions([...viewed, id]);
+  if (readViewedPromotions().includes(id)) return;
   try {
-    await getPromotionById(id);
+    await getSharedPromotion(id);
   } catch {
-    // Si falla, se desmarca para reintentar en la próxima apertura
-    writeViewedPromotions(readViewedPromotions().filter((v) => v !== id));
+    // Sin vista registrada: se reintenta en la próxima apertura
   }
+};
+
+/**
+ * Obtiene una promoción abierta desde un enlace compartido (HU 24 / HU 27).
+ * La petición ya cuenta la vista, así que se marca como vista para que el modal
+ * de detalle no la registre de nuevo.
+ */
+const pendingSharedPromotions = new Map<string, Promise<Promotion>>();
+
+export const getSharedPromotion = (id: string): Promise<Promotion> => {
+  // Reutiliza la petición en curso (doble montaje de StrictMode) para no contar dos vistas
+  const pending = pendingSharedPromotions.get(id);
+  if (pending) return pending;
+
+  writeViewedPromotions([...readViewedPromotions().filter((v) => v !== id), id]);
+  const request = getPromotionById(id)
+    .catch((err) => {
+      writeViewedPromotions(readViewedPromotions().filter((v) => v !== id));
+      throw err;
+    })
+    .finally(() => pendingSharedPromotions.delete(id));
+  pendingSharedPromotions.set(id, request);
+  return request;
 };
 
 /**

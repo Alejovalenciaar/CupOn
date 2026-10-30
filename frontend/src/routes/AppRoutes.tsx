@@ -21,6 +21,7 @@ export function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<CatalogPage />} />
+      <Route path="/promo/:id" element={<CatalogPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register/client" element={<RegisterClientPage />} />
       <Route path="/register/restaurant" element={<RegisterRestaurantPage />} />
