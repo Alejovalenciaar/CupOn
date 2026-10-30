@@ -24,17 +24,41 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
     boolean existsByCode(String code);
 
-    @Query("SELECT p FROM Promotion p WHERE p.status = :status " +
+    /** Filtros del catálogo compartidos por {@link #search} y {@link #searchPopular}. */
+    String CATALOG_FILTER = "WHERE p.status = :status " +
             "AND (CAST(:search AS string) IS NULL " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
             "OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
             "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek) " +
-            "AND (:categoryId IS NULL OR EXISTS (SELECT c FROM p.categories c WHERE c.id = :categoryId))")
+            "AND (:categoryId IS NULL OR EXISTS (SELECT c FROM p.categories c WHERE c.id = :categoryId)) ";
+
+    /** Pesos de la popularidad: un canje vale más que un favorito, y este más que una vista. */
+    int POPULARITY_REDEMPTION_WEIGHT = 3;
+    int POPULARITY_FAVORITE_WEIGHT = 2;
+    int POPULARITY_VIEW_WEIGHT = 1;
+
+    @Query("SELECT p FROM Promotion p " + CATALOG_FILTER)
     Page<Promotion> search(@Param("status") PromotionStatus status,
                             @Param("search") String search,
                             @Param("dayOfWeek") DayOfWeek dayOfWeek,
                             @Param("categoryId") UUID categoryId,
                             Pageable pageable);
+
+    /**
+     * Igual que {@link #search} pero ordenado por popularidad (sort=popular):
+     * canjes * 3 + favoritos * 2 + vistas, de mayor a menor. Los empates se resuelven por la
+     * promoción más reciente. El orden va fijo en la consulta, así que el Pageable no debe traer Sort.
+     */
+    @Query(value = "SELECT p FROM Promotion p " + CATALOG_FILTER +
+            "ORDER BY (p.currentRedemptions * " + POPULARITY_REDEMPTION_WEIGHT +
+            " + (SELECT COUNT(f) FROM Favorite f WHERE f.promotion = p) * " + POPULARITY_FAVORITE_WEIGHT +
+            " + p.viewCount * " + POPULARITY_VIEW_WEIGHT + ") DESC, p.createdAt DESC, p.id",
+            countQuery = "SELECT COUNT(p) FROM Promotion p " + CATALOG_FILTER)
+    Page<Promotion> searchPopular(@Param("status") PromotionStatus status,
+                                  @Param("search") String search,
+                                  @Param("dayOfWeek") DayOfWeek dayOfWeek,
+                                  @Param("categoryId") UUID categoryId,
+                                  Pageable pageable);
 
     long countByStatus(PromotionStatus status);
 

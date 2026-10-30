@@ -52,6 +52,7 @@ export default function CatalogPage() {
   const [activeSearch, setActiveSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [activeDay, setActiveDay] = useState("");
+  const [sortPopular, setSortPopular] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Restaurantes
@@ -100,18 +101,20 @@ export default function CatalogPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPromotions = (query?: string, day?: string, categoryId?: string) => {
+  const fetchPromotions = (query?: string, day?: string, categoryId?: string, popular?: boolean) => {
     setLoadingPromos(true);
     setErrorPromos(null);
     const q = query !== undefined ? query : activeSearch;
     const dow = day !== undefined ? day : activeDay;
     const cat = categoryId !== undefined ? categoryId : activeCategory;
-    getPromotions(q || undefined, 0, 16, dow || undefined, cat || undefined)
+    const pop = popular !== undefined ? popular : sortPopular;
+    getPromotions(q || undefined, 0, 16, dow || undefined, cat || undefined, pop ? "popular" : undefined)
       .then((d) => {
         setPromotions(d.content);
         setActiveSearch(q || "");
         setActiveDay(dow || "");
         setActiveCategory(cat || "");
+        setSortPopular(pop);
       })
       .catch(() => setErrorPromos("No se pudieron cargar los cupones."))
       .finally(() => setLoadingPromos(false));
@@ -344,6 +347,21 @@ export default function CatalogPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                id="btn-sort-popular"
+                aria-pressed={sortPopular}
+                title="Ordena por canjes, favoritos y vistas"
+                onClick={() => fetchPromotions(undefined, undefined, undefined, !sortPopular)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${
+                  sortPopular
+                    ? "bg-brand-50 text-brand-700 border-brand-200"
+                    : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
+                }`}
+              >
+                <span>🔥</span>
+                <span>Más populares</span>
+              </button>
               <button
                 type="button"
                 id="btn-toggle-favorites"

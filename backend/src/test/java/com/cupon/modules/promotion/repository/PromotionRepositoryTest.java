@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cupon.config.AuditingConfig;
 import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.DiscountType;
+import com.cupon.modules.promotion.entity.Favorite;
 import com.cupon.modules.promotion.entity.Promotion;
 import com.cupon.modules.promotion.entity.PromotionStatus;
 import com.cupon.modules.user.entity.RestaurantProfile;
@@ -25,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,15 +47,19 @@ class PromotionRepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private FavoriteRepository favoriteRepository;
+
     private Category sushi;
     private Category postres;
+    private RestaurantProfile restaurant;
 
     @BeforeEach
     void setUp() {
         User user = userRepository.save(User.builder()
                 .email("resto@cupon.com").password("x").firstName("Resto").lastName("Test")
                 .role(Role.ROLE_RESTAURANTE).build());
-        RestaurantProfile restaurant = restaurantProfileRepository.save(RestaurantProfile.builder()
+        restaurant = restaurantProfileRepository.save(RestaurantProfile.builder()
                 .user(user).businessName("Resto Test").build());
 
         sushi = categoryRepository.save(Category.builder().name("Sushi").build());
@@ -110,6 +116,49 @@ class PromotionRepositoryTest {
     @Test
     void incrementViewCount_inexistente_noActualizaNada() {
         assertThat(promotionRepository.incrementViewCount(UUID.randomUUID())).isZero();
+    }
+
+    @Test
+    void searchPopular_ordenaPorCanjesFavoritosYVistasPonderados() {
+        // SUSHI1: 2 canjes -> 6 | MIX1: 2 favoritos + 1 vista -> 5 | NONE1: 4 vistas -> 4
+        Promotion sushi1 = promotionRepository.findByCode("SUSHI1").orElseThrow();
+        sushi1.setCurrentRedemptions(2);
+        Promotion mix1 = promotionRepository.findByCode("MIX1").orElseThrow();
+        mix1.setViewCount(1);
+        Promotion none1 = promotionRepository.findByCode("NONE1").orElseThrow();
+        none1.setViewCount(4);
+        promotionRepository.saveAll(List.of(sushi1, mix1, none1));
+        favoriteRepository.save(Favorite.builder().user(saveClient("a@cupon.com")).promotion(mix1).build());
+        favoriteRepository.save(Favorite.builder().user(saveClient("b@cupon.com")).promotion(mix1).build());
+
+        Page<Promotion> result = promotionRepository.searchPopular(PromotionStatus.ACTIVE, null, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Promotion::getCode).containsExactly("SUSHI1", "MIX1", "NONE1");
+        assertThat(result.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void searchPopular_aplicaFiltrosYPaginaSobreElTotalFiltrado() {
+        Promotion mix1 = promotionRepository.findByCode("MIX1").orElseThrow();
+        mix1.setViewCount(10);
+        promotionRepository.save(mix1);
+        Promotion draft = buildPromotion(restaurant, "Sushi borrador", "DRAFT1", Set.of(sushi));
+        draft.setStatus(PromotionStatus.DRAFT);
+        draft.setViewCount(100);
+        promotionRepository.save(draft);
+
+        Page<Promotion> result = promotionRepository.searchPopular(PromotionStatus.ACTIVE, null, null, sushi.getId(),
+                PageRequest.of(0, 1));
+
+        assertThat(result.getContent()).extracting(Promotion::getCode).containsExactly("MIX1");
+        assertThat(result.getTotalElements()).isEqualTo(2);
+    }
+
+    private User saveClient(String email) {
+        return userRepository.save(User.builder()
+                .email(email).password("x").firstName("Cliente").lastName("Test")
+                .role(Role.ROLE_CLIENTE).build());
     }
 
     private Promotion buildPromotion(RestaurantProfile restaurant, String title, String code, Set<Category> categories) {

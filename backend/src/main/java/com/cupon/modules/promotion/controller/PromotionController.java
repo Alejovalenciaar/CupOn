@@ -7,6 +7,7 @@ import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
 import com.cupon.modules.promotion.service.PromotionService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,9 +49,11 @@ public class PromotionController {
                         @RequestParam(required = false) String search,
                         @RequestParam(required = false) DayOfWeek dayOfWeek,
                         @RequestParam(required = false) UUID categoryId,
+                        @Parameter(description = "'popular' ordena por canjes + favoritos + vistas")
+                        @RequestParam(required = false) String sort,
                         @PageableDefault(size = 20) Pageable pageable) {
                 return ResponseEntity.ok(ApiResponse.success(
-                                promotionService.getActivePromotions(search, dayOfWeek, categoryId, pageable)));
+                                promotionService.getActivePromotions(search, dayOfWeek, categoryId, sort, pageable)));
         }
 
         @GetMapping("/{id}")

@@ -114,7 +114,7 @@ class PromotionServiceImplTest {
                 .thenReturn(page);
         when(promotionMapper.toResponse(any(Promotion.class))).thenReturn(mock(promotion));
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, null, null, pageable);
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, null, null, null, pageable);
 
         assertThat(result.content()).hasSize(1);
         verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, null, pageable);
@@ -128,7 +128,7 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(null), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("pizza", null, null, pageable);
+        promotionService.getActivePromotions("pizza", null, null, null, pageable);
 
         verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", null, null, pageable);
     }
@@ -141,7 +141,7 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.MONDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions(null, DayOfWeek.MONDAY, null, pageable);
+        promotionService.getActivePromotions(null, DayOfWeek.MONDAY, null, null, pageable);
 
         verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.MONDAY, null, pageable);
     }
@@ -154,7 +154,7 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SUNDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("   ", DayOfWeek.SUNDAY, null, pageable);
+        promotionService.getActivePromotions("   ", DayOfWeek.SUNDAY, null, null, pageable);
 
         verify(promotionRepository).search(PromotionStatus.ACTIVE, null, DayOfWeek.SUNDAY, null, pageable);
     }
@@ -167,7 +167,7 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq("pizza"), eq(DayOfWeek.FRIDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions("pizza", DayOfWeek.FRIDAY, null, pageable);
+        promotionService.getActivePromotions("pizza", DayOfWeek.FRIDAY, null, null, pageable);
 
         verify(promotionRepository).search(PromotionStatus.ACTIVE, "pizza", DayOfWeek.FRIDAY, null, pageable);
     }
@@ -180,7 +180,7 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(DayOfWeek.SATURDAY), eq(null), eq(pageable)))
                 .thenReturn(page);
 
-        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY, null,
+        PageResponse<PromotionResponse> result = promotionService.getActivePromotions(null, DayOfWeek.SATURDAY, null, null,
                 pageable);
 
         assertThat(result.content()).isEmpty();
@@ -196,9 +196,35 @@ class PromotionServiceImplTest {
         when(promotionRepository.search(eq(PromotionStatus.ACTIVE), eq(null), eq(null), eq(categoryId), eq(pageable)))
                 .thenReturn(page);
 
-        promotionService.getActivePromotions(null, null, categoryId, pageable);
+        promotionService.getActivePromotions(null, null, categoryId, null, pageable);
 
         verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, categoryId, pageable);
+    }
+
+    @Test
+    void getActivePromotions_sortPopular_usaSearchPopularSinSortDelPageable() {
+        // sort=popular también lo interpreta Spring como Sort("popular") dentro del Pageable
+        Pageable pageable = PageRequest.of(1, 10, Sort.by("popular"));
+        Pageable unsorted = PageRequest.of(1, 10);
+        when(promotionRepository.searchPopular(PromotionStatus.ACTIVE, "pizza", null, null, unsorted))
+                .thenReturn(new PageImpl<>(List.of(), unsorted, 0));
+
+        promotionService.getActivePromotions("pizza", null, null, "POPULAR", pageable);
+
+        verify(promotionRepository).searchPopular(PromotionStatus.ACTIVE, "pizza", null, null, unsorted);
+        verify(promotionRepository, never()).search(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void getActivePromotions_otroSort_respetaElPageable() {
+        Pageable pageable = PageRequest.of(0, 20, Sort.by("title"));
+        when(promotionRepository.search(PromotionStatus.ACTIVE, null, null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        promotionService.getActivePromotions(null, null, null, "title", pageable);
+
+        verify(promotionRepository).search(PromotionStatus.ACTIVE, null, null, null, pageable);
+        verify(promotionRepository, never()).searchPopular(any(), any(), any(), any(), any());
     }
 
     @Test

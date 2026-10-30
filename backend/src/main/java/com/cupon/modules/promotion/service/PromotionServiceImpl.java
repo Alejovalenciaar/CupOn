@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,12 +48,16 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Cacheable(value = "promotions",
-            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #pageable.pageNumber")
+            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #sort + '_' + #pageable.pageNumber")
     public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
-            Pageable pageable) {
+            String sort, Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
-        Page<Promotion> page = promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
-                categoryId, pageable);
+        Page<Promotion> page = SORT_POPULAR.equalsIgnoreCase(sort)
+                // sort=popular también llega al Pageable como Sort("popular"), que no es un atributo: se descarta
+                ? promotionRepository.searchPopular(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
+                        categoryId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()))
+                : promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
+                        categoryId, pageable);
         return PageResponse.of(page.map(promotionMapper::toResponse));
     }
 

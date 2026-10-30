@@ -15,8 +15,15 @@ import java.util.UUID;
 
 public interface PromotionService {
 
+    /** Valor de {@code sort} que ordena el catálogo por popularidad (canjes + favoritos + vistas). */
+    String SORT_POPULAR = "popular";
+
+    /**
+     * Lista promociones activas filtradas. Con {@code sort = "popular"} se ordena por popularidad
+     * e ignora el Sort del Pageable; con cualquier otro valor se respeta el Pageable tal cual.
+     */
     PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
-            Pageable pageable);
+            String sort, Pageable pageable);
 
     List<CategoryResponse> getCategories();
 

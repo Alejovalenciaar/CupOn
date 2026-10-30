@@ -8,18 +8,21 @@ import apiClient from "./client";
  * @param size Cantidad de promociones por página
  * @param dayOfWeek Día opcional en que aplica la promoción (MONDAY … SUNDAY)
  * @param categoryId ID opcional de la categoría
+ * @param sort "popular" ordena por canjes + favoritos + vistas
  */
 export const getPromotions = async (
   search?: string,
   page = 0,
   size = 10,
   dayOfWeek?: string,
-  categoryId?: string
+  categoryId?: string,
+  sort?: "popular"
 ): Promise<PageResponse<Promotion>> => {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
   if (dayOfWeek) params.append("dayOfWeek", dayOfWeek);
   if (categoryId) params.append("categoryId", categoryId);
+  if (sort) params.append("sort", sort);
   params.append("page", page.toString());
   params.append("size", size.toString());
 
