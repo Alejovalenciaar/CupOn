@@ -5,6 +5,7 @@ import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.Promotion;
@@ -452,5 +453,42 @@ class PromotionServiceImplTest {
 
         assertThatThrownBy(() -> promotionService.updatePromotionStatus(userEmail, nonExistentId, PromotionStatus.ACTIVE))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getMyPromotionStats_mapeaEstadosYSumaVistas() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.countByStatusForRestaurant(restaurant.getId())).thenReturn(List.of(
+                statusSummary(PromotionStatus.ACTIVE, 4, 30),
+                statusSummary(PromotionStatus.DISABLED, 2, 7),
+                statusSummary(PromotionStatus.EXPIRED, 1, 3),
+                statusSummary(PromotionStatus.DRAFT, 5, 0)));
+
+        PromotionStatsResponse stats = promotionService.getMyPromotionStats(userEmail);
+
+        assertThat(stats).isEqualTo(new PromotionStatsResponse(4, 2, 1, 40));
+    }
+
+    @Test
+    void getMyPromotionStats_sinPromociones_devuelveCeros() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.countByStatusForRestaurant(restaurant.getId())).thenReturn(List.of());
+
+        assertThat(promotionService.getMyPromotionStats(userEmail))
+                .isEqualTo(new PromotionStatsResponse(0, 0, 0, 0));
+    }
+
+    private PromotionRepository.StatusSummary statusSummary(PromotionStatus status, long count, long views) {
+        return new PromotionRepository.StatusSummary() {
+            public PromotionStatus getStatus() { return status; }
+            public long getCount() { return count; }
+            public long getViews() { return views; }
+        };
     }
 }

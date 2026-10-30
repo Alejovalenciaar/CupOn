@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,6 +62,20 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
                                   Pageable pageable);
 
     long countByStatus(PromotionStatus status);
+
+    /** Fila de {@link #countByStatusForRestaurant}: promociones y vistas acumuladas de un estado. */
+    interface StatusSummary {
+        PromotionStatus getStatus();
+
+        long getCount();
+
+        long getViews();
+    }
+
+    /** Agrupa las promociones de un restaurante por estado, con su número y la suma de sus vistas. */
+    @Query("SELECT p.status AS status, COUNT(p) AS count, COALESCE(SUM(p.viewCount), 0) AS views " +
+           "FROM Promotion p WHERE p.restaurantProfile.id = :restaurantProfileId GROUP BY p.status")
+    List<StatusSummary> countByStatusForRestaurant(@Param("restaurantProfileId") UUID restaurantProfileId);
 
     /**
      * Incrementa el contador de vistas en una sola sentencia UPDATE para no perder

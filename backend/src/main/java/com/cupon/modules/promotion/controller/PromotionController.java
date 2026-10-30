@@ -4,6 +4,7 @@ import com.cupon.common.dto.ApiResponse;
 import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
 import com.cupon.modules.promotion.service.PromotionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -183,6 +184,19 @@ public class PromotionController {
                         @PageableDefault(size = 20) Pageable pageable) {
                 String email = authentication.getName();
                 return ResponseEntity.ok(ApiResponse.success(promotionService.getMyPromotions(email, pageable)));
+        }
+
+        @GetMapping("/mine/stats")
+        @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
+        @Operation(summary = "Resumen de mis promociones: activas, pausadas, expiradas y vistas totales (restaurante)")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Estadísticas obtenidas exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante")
+        })
+        public ResponseEntity<ApiResponse<PromotionStatsResponse>> getMyPromotionStats(Authentication authentication) {
+                String email = authentication.getName();
+                return ResponseEntity.ok(ApiResponse.success(promotionService.getMyPromotionStats(email)));
         }
 
         @PostMapping("/{id}/redeem")

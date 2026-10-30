@@ -6,6 +6,7 @@ import com.cupon.config.SecurityConfig;
 import com.cupon.modules.auth.service.JwtService;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
 import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.PromotionStatus;
@@ -205,6 +206,27 @@ class PromotionControllerTest {
                 mockMvc.perform(patch("/api/v1/promotions/{id}/status", id)
                                 .contentType("application/json")
                                 .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+        void getMyStats_conRolRestaurante_devuelveConteos() throws Exception {
+                when(promotionService.getMyPromotionStats("resto@cupon.com"))
+                                .thenReturn(new PromotionStatsResponse(3, 1, 2, 40));
+
+                mockMvc.perform(get("/api/v1/promotions/mine/stats"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.active").value(3))
+                                .andExpect(jsonPath("$.data.paused").value(1))
+                                .andExpect(jsonPath("$.data.expired").value(2))
+                                .andExpect(jsonPath("$.data.totalViews").value(40));
+        }
+
+        @Test
+        @WithMockUser(authorities = "ROLE_CLIENTE")
+        void getMyStats_conRolCliente_devuelve403() throws Exception {
+                mockMvc.perform(get("/api/v1/promotions/mine/stats"))
                                 .andExpect(status().isForbidden());
         }
 

@@ -1,4 +1,4 @@
-import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, Category } from "@/types";
+import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, Category, PromotionStats } from "@/types";
 import apiClient from "./client";
 
 /**
@@ -93,6 +93,15 @@ export const getMyPromotions = async (
   const response = await apiClient.get<ApiResponse<PageResponse<Promotion>>>(
     `/promotions/mine?page=${page}&size=${size}`
   );
+  return response.data.data;
+};
+
+/**
+ * Obtiene el resumen de promociones del restaurante autenticado (HU 26):
+ * activas, pausadas, expiradas y vistas totales
+ */
+export const getMyPromotionStats = async (): Promise<PromotionStats> => {
+  const response = await apiClient.get<ApiResponse<PromotionStats>>("/promotions/mine/stats");
   return response.data.data;
 };
 

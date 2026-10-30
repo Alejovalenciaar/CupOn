@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category } from "@/types";
+import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category, PromotionStats } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
-import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, getCategories } from "@/api/promotionServices";
+import { getMyPromotions, getMyPromotionStats, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, getCategories } from "@/api/promotionServices";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -48,6 +48,7 @@ export default function RestaurantDashboard({
   const [activeTab, setActiveTab] = useState<Tab>("metrics");
   const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [stats, setStats] = useState<PromotionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
@@ -94,6 +95,7 @@ export default function RestaurantDashboard({
       ]);
       setRestaurantData(restData);
       setPromotions(promoData.content);
+      loadStats();
       setProfileForm({
         businessName: restData.businessName || "",
         description: restData.description || "",
@@ -106,6 +108,17 @@ export default function RestaurantDashboard({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Si las estadísticas fallan, las tarjetas muestran "—" sin bloquear el resto del panel
+  const loadStats = () => {
+    getMyPromotionStats().then(setStats).catch(() => setStats(null));
+  };
+
+  const refreshPromotions = async () => {
+    const refreshed = await getMyPromotions(0, 50);
+    setPromotions(refreshed.content);
+    loadStats();
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -191,8 +204,7 @@ export default function RestaurantDashboard({
         await createPromotion(payload);
         showToast("Promoción publicada exitosamente.");
       }
-      const refreshed = await getMyPromotions(0, 50);
-      setPromotions(refreshed.content);
+      await refreshPromotions();
       onCatalogNeedsRefresh?.();
       setTimeout(() => { setIsPromoModalOpen(false); }, 1200);
     } catch (err: any) {
@@ -206,8 +218,7 @@ export default function RestaurantDashboard({
     const nextStatus = promo.status === "ACTIVE" ? "DISABLED" : "ACTIVE";
     try {
       await updatePromotionStatus(promo.id, nextStatus);
-      const refreshed = await getMyPromotions(0, 50);
-      setPromotions(refreshed.content);
+      await refreshPromotions();
       onCatalogNeedsRefresh?.();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Error al cambiar estado.", "error");
@@ -218,8 +229,7 @@ export default function RestaurantDashboard({
     if (!window.confirm("¿Eliminar este cupón permanentemente?")) return;
     try {
       await deletePromotion(promoId);
-      const refreshed = await getMyPromotions(0, 50);
-      setPromotions(refreshed.content);
+      await refreshPromotions();
       onCatalogNeedsRefresh?.();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Error al eliminar.", "error");
@@ -238,11 +248,10 @@ export default function RestaurantDashboard({
   };
 
   // Métricas calculadas
-  const activeCount = promotions.filter((p) => p.status === "ACTIVE").length;
   const totalRedemptions = promotions.reduce((s, p) => s + (p.currentRedemptions || 0), 0);
   const totalCapacity = promotions.reduce((s, p) => s + (p.maxRedemptions || 0), 0);
   const redemptionRate = totalCapacity > 0 ? Math.round((totalRedemptions / totalCapacity) * 100) : 0;
-  const totalViews = promotions.reduce((s, p) => s + (p.viewCount || 0), 0);
+  const totalViews = stats?.totalViews ?? 0;
   const viewConversion = totalViews > 0 ? Math.round((totalRedemptions / totalViews) * 100) : 0;
   const bestPromo = [...promotions].sort((a, b) => (b.currentRedemptions || 0) - (a.currentRedemptions || 0))[0];
 
@@ -412,11 +421,28 @@ export default function RestaurantDashboard({
                     </button>
                   </div>
 
-                  {/* KPIs */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {/* KPIs de estado (GET /promotions/mine/stats) */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: "Cupones activos", value: activeCount, sub: `de ${promotions.length} en total`, icon: "🎟️", color: "text-violet-600 bg-violet-50 border-violet-100" },
-                      { label: "Vistas totales", value: totalViews, sub: `${viewConversion}% terminan en canje`, icon: "👁️", color: "text-sky-600 bg-sky-50 border-sky-100" },
+                      { label: "Activas", value: stats?.active ?? "—", sub: "visibles en el catálogo", icon: "🟢", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+                      { label: "Pausadas", value: stats?.paused ?? "—", sub: "ocultas temporalmente", icon: "⏸", color: "text-amber-600 bg-amber-50 border-amber-100" },
+                      { label: "Expiradas", value: stats?.expired ?? "—", sub: "fecha de fin vencida", icon: "⌛", color: "text-slate-600 bg-slate-50 border-slate-200" },
+                      { label: "Vistas totales", value: stats?.totalViews ?? "—", sub: `${viewConversion}% terminan en canje`, icon: "👁️", color: "text-sky-600 bg-sky-50 border-sky-100" },
+                    ].map((kpi) => (
+                      <div key={kpi.label} className="bg-surface-card border border-surface-border rounded-card p-4 shadow-subtle">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{kpi.label}</span>
+                          <span className={`text-base p-1.5 rounded-button border ${kpi.color}`}>{kpi.icon}</span>
+                        </div>
+                        <div className="text-2xl font-bold text-content-primary">{kpi.value}</div>
+                        <p className="text-[11px] text-content-muted mt-0.5">{kpi.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* KPIs de rendimiento */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {[
                       { label: "Canjes totales", value: totalRedemptions, sub: "clientes que redimieron", icon: "👥", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
                       { label: "Tasa de redención", value: `${redemptionRate}%`, sub: "sobre el límite total", icon: "📈", color: "text-amber-600 bg-amber-50 border-amber-100" },
                       {

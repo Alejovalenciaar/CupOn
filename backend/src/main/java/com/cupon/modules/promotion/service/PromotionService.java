@@ -4,6 +4,7 @@ import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.RedemptionResponse;
 import com.cupon.modules.promotion.entity.PromotionStatus;
 
@@ -41,6 +42,9 @@ public interface PromotionService {
     PageResponse<PromotionResponse> getMyFavorites(String userEmail, Pageable pageable);
 
     PageResponse<PromotionResponse> getMyPromotions(String userEmail, Pageable pageable);
+
+    /** Promociones activas, pausadas y expiradas del restaurante, y el total de vistas (HU 26). */
+    PromotionStatsResponse getMyPromotionStats(String userEmail);
 
     PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus neStatus);
 

@@ -165,6 +165,13 @@ export interface SystemMetrics {
 }
 
 // --- Redemption ---
+export interface PromotionStats {
+  active: number;
+  paused: number;
+  expired: number;
+  totalViews: number;
+}
+
 export interface RedemptionResponse {
   promotionId: string;
   promotionTitle: string;

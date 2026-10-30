@@ -174,4 +174,34 @@ class PromotionRepositoryTest {
                 .categories(new HashSet<>(categories))
                 .build();
     }
+
+    @Test
+    void countByStatusForRestaurant_agrupaPorEstadoYSumaVistasSoloDelRestaurante() {
+        Promotion sushi1 = promotionRepository.findByCode("SUSHI1").orElseThrow();
+        sushi1.setViewCount(5);
+        Promotion mix1 = promotionRepository.findByCode("MIX1").orElseThrow();
+        mix1.setStatus(PromotionStatus.DISABLED);
+        mix1.setViewCount(3);
+        promotionRepository.saveAll(List.of(sushi1, mix1));
+        Promotion other = buildPromotion(saveRestaurant("otro@cupon.com"), "Ajena", "OTHER1", Set.of());
+        other.setViewCount(100);
+        promotionRepository.save(other);
+
+        List<PromotionRepository.StatusSummary> rows =
+                promotionRepository.countByStatusForRestaurant(restaurant.getId());
+
+        assertThat(rows).extracting(PromotionRepository.StatusSummary::getStatus,
+                        PromotionRepository.StatusSummary::getCount, PromotionRepository.StatusSummary::getViews)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(PromotionStatus.ACTIVE, 2L, 5L),
+                        org.assertj.core.groups.Tuple.tuple(PromotionStatus.DISABLED, 1L, 3L));
+    }
+
+    private RestaurantProfile saveRestaurant(String email) {
+        User user = userRepository.save(User.builder()
+                .email(email).password("x").firstName("Otro").lastName("Resto")
+                .role(Role.ROLE_RESTAURANTE).build());
+        return restaurantProfileRepository.save(RestaurantProfile.builder()
+                .user(user).businessName("Otro Resto").build());
+    }
 }

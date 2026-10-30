@@ -5,6 +5,7 @@ import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.Favorite;
 import com.cupon.modules.promotion.entity.Promotion;
@@ -204,6 +205,22 @@ public class PromotionServiceImpl implements PromotionService {
                 .findByRestaurantProfileId(restaurant.getId(), pageable)
                 .map(promotionMapper::toResponse);
         return PageResponse.of(page);
+    }
+
+    @Override
+    public PromotionStatsResponse getMyPromotionStats(String userEmail) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        long active = 0, paused = 0, expired = 0, totalViews = 0;
+        for (PromotionRepository.StatusSummary row : promotionRepository.countByStatusForRestaurant(restaurant.getId())) {
+            switch (row.getStatus()) {
+                case ACTIVE -> active = row.getCount();
+                case DISABLED -> paused = row.getCount();
+                case EXPIRED -> expired = row.getCount();
+                default -> { }
+            }
+            totalViews += row.getViews();
+        }
+        return new PromotionStatsResponse(active, paused, expired, totalViews);
     }
 
     private RestaurantProfile getRestaurantProfile(String userEmail) {
