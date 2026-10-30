@@ -31,6 +31,7 @@ public record PromotionResponse(
         Set<DayOfWeek> daysOfWeek,
         LocalTime startTime,
         LocalTime endTime,
-        boolean currentlyActive
+        boolean currentlyActive,
+        long viewCount
 ) {
 }

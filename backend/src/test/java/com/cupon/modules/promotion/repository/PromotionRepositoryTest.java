@@ -97,6 +97,21 @@ class PromotionRepositoryTest {
         assertThat(result.getContent()).isEmpty();
     }
 
+    @Test
+    void incrementViewCount_existente_sumaUnaVistaPorLlamada() {
+        Promotion promotion = promotionRepository.findByCode("SUSHI1").orElseThrow();
+
+        assertThat(promotionRepository.incrementViewCount(promotion.getId())).isEqualTo(1);
+        promotionRepository.incrementViewCount(promotion.getId());
+
+        assertThat(promotionRepository.findById(promotion.getId()).orElseThrow().getViewCount()).isEqualTo(2);
+    }
+
+    @Test
+    void incrementViewCount_inexistente_noActualizaNada() {
+        assertThat(promotionRepository.incrementViewCount(UUID.randomUUID())).isZero();
+    }
+
     private Promotion buildPromotion(RestaurantProfile restaurant, String title, String code, Set<Category> categories) {
         return Promotion.builder()
                 .restaurantProfile(restaurant)

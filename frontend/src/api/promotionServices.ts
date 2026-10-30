@@ -45,6 +45,41 @@ export const getPromotionById = async (id: string): Promise<Promotion> => {
   return response.data.data;
 };
 
+const VIEWED_PROMOTIONS_KEY = "cupon_viewed_promotions";
+
+const readViewedPromotions = (): string[] => {
+  try {
+    return JSON.parse(sessionStorage.getItem(VIEWED_PROMOTIONS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const writeViewedPromotions = (ids: string[]) => {
+  try {
+    sessionStorage.setItem(VIEWED_PROMOTIONS_KEY, JSON.stringify(ids));
+  } catch {
+    // sessionStorage no disponible (modo privado, bloqueado): se omite el filtro
+  }
+};
+
+/**
+ * Registra una vista del detalle (HU 28) consultando GET /promotions/{id}.
+ * Solo cuenta una vista por promoción y sesión del navegador. Se marca antes de la
+ * petición para que el doble montaje de StrictMode no la cuente dos veces.
+ */
+export const registerPromotionView = async (id: string): Promise<void> => {
+  const viewed = readViewedPromotions();
+  if (viewed.includes(id)) return;
+  writeViewedPromotions([...viewed, id]);
+  try {
+    await getPromotionById(id);
+  } catch {
+    // Si falla, se desmarca para reintentar en la próxima apertura
+    writeViewedPromotions(readViewedPromotions().filter((v) => v !== id));
+  }
+};
+
 /**
  * Obtiene las promociones creadas por el restaurante autenticado (HU 4)
  */

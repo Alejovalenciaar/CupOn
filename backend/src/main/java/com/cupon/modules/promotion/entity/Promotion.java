@@ -81,6 +81,11 @@ public class Promotion extends BaseEntity {
     @Builder.Default
     private int currentRedemptions = 0;
 
+    /** Veces que se ha consultado el detalle (GET /promotions/{id}). Se incrementa en BD de forma atómica. */
+    @Column(name = "view_count", nullable = false)
+    @Builder.Default
+    private long viewCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

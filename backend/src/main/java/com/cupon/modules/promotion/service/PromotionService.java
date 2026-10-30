@@ -20,6 +20,7 @@ public interface PromotionService {
 
     List<CategoryResponse> getCategories();
 
+    /** Devuelve el detalle e incrementa su contador de vistas. */
     PromotionResponse getPromotionById(UUID id);
 
     PromotionResponse createPromotion(String userEmail, CreatePromotionRequest request);

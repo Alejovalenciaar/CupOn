@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Promotion, RedemptionResponse } from '@/types';
-import { redeemPromotion } from '@/api/promotionServices';
+import { redeemPromotion, registerPromotionView } from '@/api/promotionServices';
 import ActiveDaysPills from './ActiveDaysPills';
 
 interface CouponDetailModalProps {
@@ -21,6 +21,10 @@ export default function CouponDetailModal({
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemResult, setRedeemResult] = useState<RedemptionResponse | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+
+  useEffect(() => {
+    registerPromotionView(promo.id);
+  }, [promo.id]);
 
   const days = (promo as any).daysOfWeek || [];
 

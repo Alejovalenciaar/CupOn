@@ -54,7 +54,7 @@ class UserAccountToolsTest {
                 UUID.randomUUID(), titulo, "desc", "COD", DiscountType.PERCENTAGE,
                 new BigDecimal("10.00"), new BigDecimal("0"), LocalDateTime.now(), LocalDateTime.now().plusDays(1),
                 0, 0, PromotionStatus.ACTIVE, null, "Restaurante X", UUID.randomUUID(),
-                Set.of(), LocalDateTime.now(), Set.of(DayOfWeek.MONDAY), null, null, true);
+                Set.of(), LocalDateTime.now(), Set.of(DayOfWeek.MONDAY), null, null, true, 0L);
     }
 
     @Test

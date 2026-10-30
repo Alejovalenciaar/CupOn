@@ -47,7 +47,7 @@ class PromotionCatalogToolsTest {
                 LocalDateTime.now(), LocalDateTime.now().plusDays(90),
                 150, 0, com.cupon.modules.promotion.entity.PromotionStatus.ACTIVE, null,
                 "Bella Italia Trattoria", UUID.randomUUID(), Set.of("Italiana"),
-                LocalDateTime.now(), Set.of(DayOfWeek.MONDAY), null, null, true);
+                LocalDateTime.now(), Set.of(DayOfWeek.MONDAY), null, null, true, 0L);
     }
 
     private RestaurantResponse restauranteItaliano() {

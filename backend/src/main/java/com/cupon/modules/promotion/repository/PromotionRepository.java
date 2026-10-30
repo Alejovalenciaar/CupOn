@@ -39,6 +39,14 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
     long countByStatus(PromotionStatus status);
 
     /**
+     * Incrementa el contador de vistas en una sola sentencia UPDATE para no perder
+     * incrementos con peticiones concurrentes. Devuelve 0 si la promoción no existe.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Promotion p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
+    int incrementViewCount(@Param("id") UUID id);
+
+    /**
      * Devuelve el número de promociones ACTIVE cuya fecha de fin ya pasó.
      * Usada por el job de expiración para actualizar el estado a EXPIRED.
      */

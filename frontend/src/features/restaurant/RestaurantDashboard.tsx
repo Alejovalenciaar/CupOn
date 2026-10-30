@@ -242,6 +242,8 @@ export default function RestaurantDashboard({
   const totalRedemptions = promotions.reduce((s, p) => s + (p.currentRedemptions || 0), 0);
   const totalCapacity = promotions.reduce((s, p) => s + (p.maxRedemptions || 0), 0);
   const redemptionRate = totalCapacity > 0 ? Math.round((totalRedemptions / totalCapacity) * 100) : 0;
+  const totalViews = promotions.reduce((s, p) => s + (p.viewCount || 0), 0);
+  const viewConversion = totalViews > 0 ? Math.round((totalRedemptions / totalViews) * 100) : 0;
   const bestPromo = [...promotions].sort((a, b) => (b.currentRedemptions || 0) - (a.currentRedemptions || 0))[0];
 
   const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
@@ -411,9 +413,10 @@ export default function RestaurantDashboard({
                   </div>
 
                   {/* KPIs */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                     {[
                       { label: "Cupones activos", value: activeCount, sub: `de ${promotions.length} en total`, icon: "🎟️", color: "text-violet-600 bg-violet-50 border-violet-100" },
+                      { label: "Vistas totales", value: totalViews, sub: `${viewConversion}% terminan en canje`, icon: "👁️", color: "text-sky-600 bg-sky-50 border-sky-100" },
                       { label: "Canjes totales", value: totalRedemptions, sub: "clientes que redimieron", icon: "👥", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
                       { label: "Tasa de redención", value: `${redemptionRate}%`, sub: "sobre el límite total", icon: "📈", color: "text-amber-600 bg-amber-50 border-amber-100" },
                       {
@@ -465,7 +468,7 @@ export default function RestaurantDashboard({
                                     {promo.status === "ACTIVE" ? "Activa" : "Pausada"}
                                   </span>
                                 </div>
-                                <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2">{cur}/{max} ({pct}%)</span>
+                                <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2">👁️ {promo.viewCount || 0} · {cur}/{max} ({pct}%)</span>
                               </div>
                               <div className="h-1.5 bg-surface-muted rounded-full overflow-hidden">
                                 <div
@@ -557,6 +560,7 @@ export default function RestaurantDashboard({
 
                             <div className="flex justify-between text-[11px] text-content-muted pt-1">
                               <span>Canjes: <strong className="text-content-primary">{promo.currentRedemptions || 0}/{promo.maxRedemptions || "∞"}</strong></span>
+                              <span>Vistas: <strong className="text-content-primary">{promo.viewCount || 0}</strong></span>
                               <span>Mín: <strong className="text-content-primary">{promo.minPurchase ? `$${Number(promo.minPurchase).toLocaleString()}` : "Ninguno"}</strong></span>
                             </div>
                           </div>

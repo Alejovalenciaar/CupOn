@@ -215,6 +215,7 @@ class PromotionServiceImplTest {
     @Test
     void getPromotionById_existente_devuelveResponse() {
         Promotion promotion = buildPromotion(buildRestaurantProfile(buildUser()));
+        when(promotionRepository.incrementViewCount(promotion.getId())).thenReturn(1);
         when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
         when(promotionMapper.toResponse(promotion)).thenReturn(mock(promotion));
 
@@ -224,12 +225,27 @@ class PromotionServiceImplTest {
     }
 
     @Test
+    void getPromotionById_existente_incrementaViewCountAntesDeLeer() {
+        Promotion promotion = buildPromotion(buildRestaurantProfile(buildUser()));
+        promotion.setViewCount(5);
+        when(promotionRepository.incrementViewCount(promotion.getId())).thenReturn(1);
+        when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
+        when(promotionMapper.toResponse(promotion)).thenReturn(mock(promotion));
+
+        PromotionResponse response = promotionService.getPromotionById(promotion.getId());
+
+        verify(promotionRepository).incrementViewCount(promotion.getId());
+        assertThat(response.viewCount()).isEqualTo(5);
+    }
+
+    @Test
     void getPromotionById_inexistente_lanzaResourceNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(promotionRepository.findById(id)).thenReturn(Optional.empty());
+        when(promotionRepository.incrementViewCount(id)).thenReturn(0);
 
         assertThatThrownBy(() -> promotionService.getPromotionById(id))
                 .isInstanceOf(ResourceNotFoundException.class);
+        verify(promotionRepository, never()).findById(id);
     }
 
     @Test
@@ -351,7 +367,7 @@ class PromotionServiceImplTest {
                 promotion.getCurrentRedemptions(), promotion.getStatus(), promotion.getImageUrl(),
                 promotion.getRestaurantProfile().getBusinessName(), promotion.getRestaurantProfile().getId(),
                 Set.of(), promotion.getCreatedAt(), Set.of(), promotion.getStartTime(), promotion.getEndTime(),
-                promotion.isCurrentlyActive());
+                promotion.isCurrentlyActive(), promotion.getViewCount());
     }
 
     @Test

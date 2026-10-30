@@ -4,7 +4,7 @@ import AdminDashboard from "./features/admin/AdminDashboard";
 import FavoritesPage from "./features/client/FavoritesPage";
 import { getRestaurants, updateMyRestaurant, getMyRestaurant } from "./api/restaurantServices";
 import { getMyProfile, updateMyProfile } from "./api/userServices";
-import { getPromotions, getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, toggleFavorite, getMyFavorites } from "./api/promotionServices";
+import { getPromotions, getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus, toggleFavorite, getMyFavorites, registerPromotionView } from "./api/promotionServices";
 import { registerClient, registerRestaurant, login, forgotPassword, resetPassword } from "./api/authServices";
 import {
   Restaurant,
@@ -295,6 +295,7 @@ export default function App() {
 
   const handleOpenModal = (promotion: Promotion) => {
     setSelectedPromotion(promotion);
+    registerPromotionView(promotion.id);
     setCopiedCode(false);
     setSharedToast(false);
   };

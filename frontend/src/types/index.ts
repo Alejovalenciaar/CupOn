@@ -138,6 +138,7 @@ export interface Promotion {
   endDate: string;
   maxRedemptions: number;
   currentRedemptions: number;
+  viewCount: number;
   status: 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   imageUrl: string;
   restaurantName: string;

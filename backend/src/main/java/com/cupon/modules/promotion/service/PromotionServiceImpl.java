@@ -64,7 +64,11 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     @Override
+    @Transactional
     public PromotionResponse getPromotionById(UUID id) {
+        if (promotionRepository.incrementViewCount(id) == 0) {
+            throw new ResourceNotFoundException("Promoción", "id", id);
+        }
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", id));
         return promotionMapper.toResponse(promotion);
