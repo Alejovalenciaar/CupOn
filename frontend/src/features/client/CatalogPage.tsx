@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getPromotions, toggleFavorite, getMyFavorites } from "@/api/promotionServices";
-import { getRestaurants } from "@/api/restaurantServices";
+import {
+  getRestaurants,
+  toggleFavoriteRestaurant,
+  getMyFavoriteRestaurants,
+} from "@/api/restaurantServices";
 import type { Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -22,6 +26,8 @@ const CATEGORIES = [
 
 export default function CatalogPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get("search") || "";
 
   // Sesión
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(() => {
@@ -36,8 +42,8 @@ export default function CatalogPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loadingPromos, setLoadingPromos] = useState(true);
   const [errorPromos, setErrorPromos] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeSearch, setActiveSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+  const [activeSearch, setActiveSearch] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState("");
 
   // Restaurantes
@@ -55,6 +61,13 @@ export default function CatalogPage() {
       return [];
     }
   });
+  const [favoriteRestaurantIds, setFavoriteRestaurantIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("cupon_fav_restaurants") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // Modal detalle
@@ -62,12 +75,15 @@ export default function CatalogPage() {
 
   // ── Carga inicial ────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchPromotions();
+    fetchPromotions(initialQuery || undefined);
 
     // Sincronizar favoritos si hay sesión de cliente
     if (currentUser?.role === "ROLE_CLIENTE") {
       getMyFavorites(0, 100)
         .then((d) => setFavoriteIds((d.content || []).map((p) => p.id)))
+        .catch(() => {});
+      getMyFavoriteRestaurants(0, 100)
+        .then((d) => setFavoriteRestaurantIds((d.content || []).map((r) => r.id)))
         .catch(() => {});
     }
 
@@ -140,6 +156,27 @@ export default function CatalogPage() {
     if (currentUser?.role === "ROLE_CLIENTE") {
       toggleFavorite(id).catch(() => {
         setFavoriteIds((prev) => {
+          const isFav = prev.includes(id);
+          return isFav ? prev.filter((x) => x !== id) : [...prev, id];
+        });
+      });
+    }
+  };
+
+  const handleToggleFavoriteRestaurant = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavoriteRestaurantIds((prev) => {
+      const isFav = prev.includes(id);
+      const next = isFav ? prev.filter((x) => x !== id) : [...prev, id];
+      if (currentUser?.role !== "ROLE_CLIENTE") {
+        localStorage.setItem("cupon_fav_restaurants", JSON.stringify(next));
+      }
+      return next;
+    });
+
+    if (currentUser?.role === "ROLE_CLIENTE") {
+      toggleFavoriteRestaurant(id).catch(() => {
+        setFavoriteRestaurantIds((prev) => {
           const isFav = prev.includes(id);
           return isFav ? prev.filter((x) => x !== id) : [...prev, id];
         });
@@ -469,6 +506,8 @@ export default function CatalogPage() {
                 <RestaurantCard
                   key={restaurant.id}
                   restaurant={restaurant}
+                  isFavorite={favoriteRestaurantIds.includes(restaurant.id)}
+                  onToggleFavorite={handleToggleFavoriteRestaurant}
                   onFilterPromotions={(name) => {
                     setSearchTerm(name);
                     fetchPromotions(name);

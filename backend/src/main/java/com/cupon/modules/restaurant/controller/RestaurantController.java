@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +45,39 @@ public class RestaurantController {
                         @PageableDefault(size = 20) Pageable pageable) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 restaurantService.getApprovedRestaurants(search, cuisineType, pageable)));
+        }
+
+        @GetMapping("/favorites")
+        @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
+        @Operation(summary = "Listar mis restaurantes favoritos (cliente)")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado obtenido exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de cliente")
+        })
+        public ResponseEntity<ApiResponse<PageResponse<RestaurantResponse>>> getMyFavorites(
+                        Authentication authentication,
+                        @PageableDefault(size = 20) Pageable pageable) {
+                String email = authentication.getName();
+                return ResponseEntity.ok(ApiResponse.success(
+                                restaurantService.getMyFavoriteRestaurants(email, pageable)));
+        }
+
+        @PostMapping("/{id}/favorite")
+        @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
+        @Operation(summary = "Agregar o quitar restaurante de favoritos (cliente)")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Favorito actualizado"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de cliente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Restaurante no encontrado")
+        })
+        public ResponseEntity<ApiResponse<Void>> toggleFavorite(
+                        Authentication authentication,
+                        @PathVariable UUID id) {
+                String email = authentication.getName();
+                restaurantService.toggleFavoriteRestaurant(email, id);
+                return ResponseEntity.ok(ApiResponse.success("Favorito actualizado", null));
         }
 
         @GetMapping("/{id}")

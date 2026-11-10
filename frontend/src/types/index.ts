@@ -84,6 +84,8 @@ export interface UpdateRestaurantRequest {
   cuisineType?: string;
   description?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl?: string;
   phoneNumber?: string;
 }
@@ -95,9 +97,13 @@ export interface Restaurant {
   description: string;
   cuisineType?: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl: string;
   phoneNumber: string;
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  userId?: string;
+  ownerEnabled?: boolean;
   ownerName: string;
   createdAt: string;
 }
@@ -147,12 +153,22 @@ export interface ApproveRestaurantRequest {
   rejectionReason?: string;
 }
 
+export interface TopRestaurantMetric {
+  restaurantId: string;
+  businessName: string;
+  cuisineType?: string;
+  activePromotions: number;
+  totalRedemptions: number;
+}
+
 export interface SystemMetrics {
   totalUsers: number;
   totalRestaurants: number;
   pendingApprovals: number;
   totalPromotions: number;
   activePromotions: number;
+  totalRedemptions?: number;
+  topRestaurants?: TopRestaurantMetric[];
 }
 
 // --- Redemption ---

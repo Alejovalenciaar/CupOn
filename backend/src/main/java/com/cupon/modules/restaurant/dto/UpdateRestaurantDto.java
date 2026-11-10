@@ -1,5 +1,7 @@
 package com.cupon.modules.restaurant.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 
 public record UpdateRestaurantDto(
@@ -10,6 +12,14 @@ public record UpdateRestaurantDto(
                 @Size(max = 100, message = "El tipo de cocina no puede exceder los 100 caracteres") String cuisineType,
 
                 @Size(max = 500) String address,
+
+                @DecimalMin(value = "-90.0", message = "La latitud debe estar entre -90 y 90")
+                @DecimalMax(value = "90.0", message = "La latitud debe estar entre -90 y 90")
+                Double latitude,
+
+                @DecimalMin(value = "-180.0", message = "La longitud debe estar entre -180 y 180")
+                @DecimalMax(value = "180.0", message = "La longitud debe estar entre -180 y 180")
+                Double longitude,
 
                 @Size(max = 500) String logoUrl,
 

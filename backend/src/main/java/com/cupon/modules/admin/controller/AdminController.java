@@ -5,6 +5,7 @@ import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.admin.dto.ApproveRestaurantRequest;
 import com.cupon.modules.admin.dto.SystemMetricsResponse;
 import com.cupon.modules.admin.service.AdminService;
+import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.restaurant.dto.RestaurantResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -74,6 +75,18 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> suspendUser(@PathVariable UUID id) {
         adminService.suspendUser(id);
         return ResponseEntity.ok(ApiResponse.success("Estado de cuenta actualizado", null));
+    }
+
+    @GetMapping("/promotions")
+    @Operation(summary = "Listar todas las promociones de todos los estados (moderación)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Listado de promociones obtenido exitosamente"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de administrador")
+    })
+    public ResponseEntity<ApiResponse<PageResponse<PromotionResponse>>> getAllPromotions(
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAllPromotions(pageable)));
     }
 
     @DeleteMapping("/promotions/{id}")

@@ -4,7 +4,10 @@ import com.cupon.common.dto.PageResponse;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.admin.dto.ApproveRestaurantRequest;
 import com.cupon.modules.admin.dto.SystemMetricsResponse;
+import com.cupon.modules.promotion.dto.PromotionResponse;
+import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.PromotionStatus;
+import com.cupon.modules.promotion.mapper.PromotionMapper;
 import com.cupon.modules.promotion.repository.PromotionRepository;
 import com.cupon.modules.restaurant.dto.RestaurantResponse;
 import com.cupon.modules.restaurant.mapper.RestaurantMapper;
@@ -50,6 +53,9 @@ class AdminServiceImplTest {
     @Mock
     private RestaurantMapper restaurantMapper;
 
+    @Mock
+    private PromotionMapper promotionMapper;
+
     @InjectMocks
     private AdminServiceImpl adminService;
 
@@ -74,7 +80,9 @@ class AdminServiceImplTest {
     private RestaurantResponse buildResponse(RestaurantProfile profile) {
         return new RestaurantResponse(
                 profile.getId(), profile.getBusinessName(), "desc", profile.getCuisineType(), "Calle 1",
+                profile.getLatitude(), profile.getLongitude(),
                 null, "3001234567", profile.getApprovalStatus(),
+                profile.getUser().getId(), profile.getUser().isEnabled(),
                 profile.getUser().getEmail(), LocalDateTime.now());
     }
 
@@ -195,11 +203,38 @@ class AdminServiceImplTest {
     void suspendUser_usuarioInexistente_lanzaResourceNotFoundException() {
         UUID id = UUID.randomUUID();
         when(userRepository.findById(id)).thenReturn(Optional.empty());
+        when(restaurantProfileRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adminService.suspendUser(id))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void getAllPromotions_devuelveTodasLasPromociones() {
+        Pageable pageable = PageRequest.of(0, 20);
+        com.cupon.modules.promotion.entity.Promotion promo = com.cupon.modules.promotion.entity.Promotion.builder()
+                .title("Promo Pausada")
+                .status(PromotionStatus.DISABLED)
+                .build();
+        promo.setId(UUID.randomUUID());
+
+        PromotionResponse promoRes = new PromotionResponse(
+                promo.getId(), "Promo Pausada", "desc", "CODE10",
+                DiscountType.PERCENTAGE, java.math.BigDecimal.TEN, java.math.BigDecimal.ZERO,
+                LocalDateTime.now(), LocalDateTime.now().plusDays(5),
+                100, 0, PromotionStatus.DISABLED, null, "Pizza Feliz", UUID.randomUUID(),
+                java.util.Set.of(), LocalDateTime.now(), java.util.Set.of(), false
+        );
+
+        when(promotionRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(promo), pageable, 1));
+        when(promotionMapper.toResponse(promo)).thenReturn(promoRes);
+
+        PageResponse<PromotionResponse> result = adminService.getAllPromotions(pageable);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).status()).isEqualTo(PromotionStatus.DISABLED);
     }
 
     // ─── deletePromotion ────────────────────────────────────────────────────
@@ -234,12 +269,24 @@ class AdminServiceImplTest {
     // ─── getSystemMetrics ───────────────────────────────────────────────────
 
     @Test
-    void getSystemMetrics_devuelveDatosAgregadosDelRepositorio() {
+    void getSystemMetrics_devuelveDatosAgregadosYTopRestaurantes() {
+        User owner = buildUser();
+        RestaurantProfile r1 = buildProfile(owner);
+        r1.setBusinessName("Burger House");
+        r1.setCuisineType("Hamburguesas");
+
+        com.cupon.modules.promotion.entity.Promotion p1 = com.cupon.modules.promotion.entity.Promotion.builder()
+                .restaurantProfile(r1)
+                .status(PromotionStatus.ACTIVE)
+                .currentRedemptions(42)
+                .build();
+
         when(userRepository.count()).thenReturn(50L);
         when(restaurantProfileRepository.count()).thenReturn(10L);
         when(restaurantProfileRepository.countByApprovalStatus(ApprovalStatus.PENDING)).thenReturn(3L);
         when(promotionRepository.count()).thenReturn(25L);
         when(promotionRepository.countByStatus(PromotionStatus.ACTIVE)).thenReturn(18L);
+        when(promotionRepository.findAll()).thenReturn(List.of(p1));
 
         SystemMetricsResponse metrics = adminService.getSystemMetrics();
 
@@ -248,6 +295,10 @@ class AdminServiceImplTest {
         assertThat(metrics.pendingApprovals()).isEqualTo(3L);
         assertThat(metrics.totalPromotions()).isEqualTo(25L);
         assertThat(metrics.activePromotions()).isEqualTo(18L);
+        assertThat(metrics.totalRedemptions()).isEqualTo(42L);
+        assertThat(metrics.topRestaurants()).hasSize(1);
+        assertThat(metrics.topRestaurants().get(0).businessName()).isEqualTo("Burger House");
+        assertThat(metrics.topRestaurants().get(0).totalRedemptions()).isEqualTo(42L);
     }
 
     @Test

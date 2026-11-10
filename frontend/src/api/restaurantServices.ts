@@ -55,3 +55,26 @@ export const getMyRestaurant = async (): Promise<Restaurant> => {
   const response = await apiClient.get<ApiResponse<Restaurant>>("/restaurants/me");
   return response.data.data;
 };
+
+/**
+ * Alterna el estado de favorito de un restaurante para el cliente autenticado (HU23)
+ * Requiere rol ROLE_CLIENTE
+ */
+export const toggleFavoriteRestaurant = async (id: string): Promise<void> => {
+  await apiClient.post<ApiResponse<void>>(`/restaurants/${id}/favorite`);
+};
+
+/**
+ * Obtiene los restaurantes favoritos del cliente autenticado (HU23)
+ * Requiere rol ROLE_CLIENTE
+ */
+export const getMyFavoriteRestaurants = async (
+  page = 0,
+  size = 50
+): Promise<PageResponse<Restaurant>> => {
+  const response = await apiClient.get<ApiResponse<PageResponse<Restaurant>>>(
+    `/restaurants/favorites?page=${page}&size=${size}`
+  );
+  return response.data.data;
+};
+

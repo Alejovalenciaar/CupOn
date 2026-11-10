@@ -3,6 +3,7 @@ import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest 
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
 import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "@/api/promotionServices";
 import { ImageUploader } from "@/components/ImageUpLoader";
+import RestaurantMap from "@/components/RestaurantMap";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -46,7 +47,7 @@ export default function RestaurantDashboard({
   // Profile form
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UpdateRestaurantRequest>({
-    businessName: "", cuisineType: "", description: "", address: "", phoneNumber: "", logoUrl: "",
+    businessName: "", cuisineType: "", description: "", address: "", latitude: null, longitude: null, phoneNumber: "", logoUrl: "",
   });
 
   // Promo modal
@@ -85,6 +86,8 @@ export default function RestaurantDashboard({
         cuisineType: restData.cuisineType || "",
         description: restData.description || "",
         address: restData.address || "",
+        latitude: restData.latitude ?? 4.6768,
+        longitude: restData.longitude ?? -74.0482,
         phoneNumber: restData.phoneNumber || "",
         logoUrl: restData.logoUrl || "",
       });
@@ -642,6 +645,69 @@ export default function RestaurantDashboard({
                             onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
                           />
                         </Field>
+                      </div>
+
+                      {/* Geolocalización en Mapa (HU25) */}
+                      <div className="space-y-3 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-semibold text-content-primary">
+                            Ubicación en el mapa (Geolocalización)
+                          </label>
+                          {profileForm.latitude != null && profileForm.longitude != null && (
+                            <span className="font-mono text-[11px] text-content-muted">
+                              {profileForm.latitude.toFixed(5)}, {profileForm.longitude.toFixed(5)}
+                            </span>
+                          )}
+                        </div>
+
+                        <RestaurantMap
+                          latitude={profileForm.latitude}
+                          longitude={profileForm.longitude}
+                          businessName={profileForm.businessName}
+                          address={profileForm.address}
+                          interactive={true}
+                          heightClassName="h-56"
+                          onLocationChange={(lat, lng) =>
+                            setProfileForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+                          }
+                        />
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Latitud">
+                            <input
+                              type="number"
+                              step="any"
+                              min="-90"
+                              max="90"
+                              placeholder="4.6768"
+                              className={`${inputCls} font-mono text-xs`}
+                              value={profileForm.latitude ?? ""}
+                              onChange={(e) =>
+                                setProfileForm({
+                                  ...profileForm,
+                                  latitude: e.target.value === "" ? null : parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Longitud">
+                            <input
+                              type="number"
+                              step="any"
+                              min="-180"
+                              max="180"
+                              placeholder="-74.0482"
+                              className={`${inputCls} font-mono text-xs`}
+                              value={profileForm.longitude ?? ""}
+                              onChange={(e) =>
+                                setProfileForm({
+                                  ...profileForm,
+                                  longitude: e.target.value === "" ? null : parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          </Field>
+                        </div>
                       </div>
 
                       <ImageUploader

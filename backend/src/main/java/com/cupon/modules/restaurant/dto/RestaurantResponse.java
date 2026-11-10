@@ -11,9 +11,13 @@ public record RestaurantResponse(
                 String description,
                 String cuisineType,
                 String address,
+                Double latitude,
+                Double longitude,
                 String logoUrl,
                 String phoneNumber,
                 ApprovalStatus approvalStatus,
+                UUID userId,
+                Boolean ownerEnabled,
                 String ownerName,
                 LocalDateTime createdAt) {
 }

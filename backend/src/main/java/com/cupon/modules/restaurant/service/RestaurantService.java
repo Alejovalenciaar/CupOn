@@ -16,4 +16,8 @@ public interface RestaurantService {
     RestaurantResponse getMyRestaurant(String userEmail);
 
     RestaurantResponse updateMyRestaurant(String userEmail, UpdateRestaurantDto request);
+
+    void toggleFavoriteRestaurant(String userEmail, UUID restaurantId);
+
+    PageResponse<RestaurantResponse> getMyFavoriteRestaurants(String userEmail, Pageable pageable);
 }

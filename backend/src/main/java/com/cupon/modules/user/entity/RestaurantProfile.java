@@ -40,6 +40,12 @@ public class RestaurantProfile extends BaseEntity {
     @Column(length = 500)
     private String address;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 

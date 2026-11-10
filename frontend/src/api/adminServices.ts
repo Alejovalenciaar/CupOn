@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import { ApiResponse, PageResponse, Restaurant, SystemMetrics, ApproveRestaurantRequest } from "@/types";
+import { ApiResponse, PageResponse, Promotion, Restaurant, SystemMetrics, ApproveRestaurantRequest } from "@/types";
 
 /**
  * Obtiene métricas generales del sistema (HU 6.5)
@@ -37,6 +37,19 @@ export const approveRestaurant = async (
  */
 export const suspendUser = async (id: string): Promise<void> => {
   await apiClient.put<ApiResponse<void>>(`/admin/users/${id}/suspend`);
+};
+
+/**
+ * Lista todas las promociones de todos los estados para revisión administrativa (HU08)
+ */
+export const getAdminPromotions = async (
+  page = 0,
+  size = 50
+): Promise<PageResponse<Promotion>> => {
+  const response = await apiClient.get<ApiResponse<PageResponse<Promotion>>>(
+    `/admin/promotions?page=${page}&size=${size}`
+  );
+  return response.data.data;
 };
 
 /**

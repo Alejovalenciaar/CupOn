@@ -4,7 +4,9 @@ import com.cupon.common.dto.PageResponse;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.restaurant.dto.RestaurantResponse;
 import com.cupon.modules.restaurant.dto.UpdateRestaurantDto;
+import com.cupon.modules.restaurant.entity.FavoriteRestaurant;
 import com.cupon.modules.restaurant.mapper.RestaurantMapper;
+import com.cupon.modules.restaurant.repository.FavoriteRestaurantRepository;
 import com.cupon.modules.user.entity.ApprovalStatus;
 import com.cupon.modules.user.entity.RestaurantProfile;
 import com.cupon.modules.user.entity.User;
@@ -42,6 +44,9 @@ class RestaurantServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
+    private FavoriteRestaurantRepository favoriteRestaurantRepository;
+
+    @Mock
     private RestaurantMapper restaurantMapper;
 
     @InjectMocks
@@ -75,8 +80,11 @@ class RestaurantServiceImplTest {
         return new RestaurantResponse(
                 profile.getId(), profile.getBusinessName(), profile.getDescription(),
                 profile.getCuisineType(),
-                profile.getAddress(), null, profile.getPhoneNumber(),
-                profile.getApprovalStatus(), profile.getUser().getEmail(), LocalDateTime.now());
+                profile.getAddress(), profile.getLatitude(), profile.getLongitude(),
+                null, profile.getPhoneNumber(),
+                profile.getApprovalStatus(),
+                profile.getUser().getId(), profile.getUser().isEnabled(),
+                profile.getUser().getEmail(), LocalDateTime.now());
     }
 
     // ─── getApprovedRestaurants ─────────────────────────────────────────────
@@ -199,7 +207,7 @@ class RestaurantServiceImplTest {
         User owner = buildUser();
         RestaurantProfile profile = buildProfile(owner, ApprovalStatus.APPROVED);
         String originalName = profile.getBusinessName();
-        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, null, null, null, null, null, null);
 
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
         when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(profile));
@@ -217,7 +225,7 @@ class RestaurantServiceImplTest {
         User owner = buildUser();
         RestaurantProfile profile = buildProfile(owner, ApprovalStatus.APPROVED);
         String originalPhone = profile.getPhoneNumber();
-        UpdateRestaurantDto request = new UpdateRestaurantDto("Nuevo Nombre", null, null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("Nuevo Nombre", null, null, null, null, null, null, null);
 
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
         when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(profile));
@@ -235,7 +243,7 @@ class RestaurantServiceImplTest {
     void updateMyRestaurant_conCuisineType_actualizaEseCampo() {
         User owner = buildUser();
         RestaurantProfile profile = buildProfile(owner, ApprovalStatus.APPROVED);
-        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, "Mexicana", null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, "Mexicana", null, null, null, null, null);
 
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
         when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(profile));
@@ -249,10 +257,28 @@ class RestaurantServiceImplTest {
     }
 
     @Test
+    void updateMyRestaurant_conCoordenadas_actualizaLatitudYLongitud() {
+        User owner = buildUser();
+        RestaurantProfile profile = buildProfile(owner, ApprovalStatus.APPROVED);
+        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, null, null, 4.6768, -74.0482, null, null);
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
+        when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(profile));
+        when(restaurantProfileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(restaurantMapper.toResponse(any())).thenReturn(buildResponse(profile));
+
+        restaurantService.updateMyRestaurant(userEmail, request);
+
+        assertThat(profile.getLatitude()).isEqualTo(4.6768);
+        assertThat(profile.getLongitude()).isEqualTo(-74.0482);
+        verify(restaurantProfileRepository).save(profile);
+    }
+
+    @Test
     void updateMyRestaurant_usuarioInexistente_lanzaResourceNotFoundException() {
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.empty());
 
-        UpdateRestaurantDto request = new UpdateRestaurantDto("X", null, null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("X", null, null, null, null, null, null, null);
         assertThatThrownBy(() -> restaurantService.updateMyRestaurant(userEmail, request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
@@ -265,10 +291,78 @@ class RestaurantServiceImplTest {
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
         when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.empty());
 
-        UpdateRestaurantDto request = new UpdateRestaurantDto("X", null, null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("X", null, null, null, null, null, null, null);
         assertThatThrownBy(() -> restaurantService.updateMyRestaurant(userEmail, request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(restaurantProfileRepository, never()).save(any());
+    }
+
+    // ─── toggleFavoriteRestaurant & getMyFavoriteRestaurants ─────────────────
+
+    @Test
+    void toggleFavoriteRestaurant_noExistia_guardaFavorito() {
+        User client = buildUser();
+        RestaurantProfile profile = buildProfile(client, ApprovalStatus.APPROVED);
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(client));
+        when(restaurantProfileRepository.existsById(profile.getId())).thenReturn(true);
+        when(favoriteRestaurantRepository.existsByUserIdAndRestaurantProfileId(client.getId(), profile.getId()))
+                .thenReturn(false);
+        when(restaurantProfileRepository.getReferenceById(profile.getId())).thenReturn(profile);
+
+        restaurantService.toggleFavoriteRestaurant(userEmail, profile.getId());
+
+        verify(favoriteRestaurantRepository).save(any(FavoriteRestaurant.class));
+        verify(favoriteRestaurantRepository, never()).deleteByUserIdAndRestaurantProfileId(any(), any());
+    }
+
+    @Test
+    void toggleFavoriteRestaurant_yaExistia_eliminaFavorito() {
+        User client = buildUser();
+        RestaurantProfile profile = buildProfile(client, ApprovalStatus.APPROVED);
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(client));
+        when(restaurantProfileRepository.existsById(profile.getId())).thenReturn(true);
+        when(favoriteRestaurantRepository.existsByUserIdAndRestaurantProfileId(client.getId(), profile.getId()))
+                .thenReturn(true);
+
+        restaurantService.toggleFavoriteRestaurant(userEmail, profile.getId());
+
+        verify(favoriteRestaurantRepository).deleteByUserIdAndRestaurantProfileId(client.getId(), profile.getId());
+        verify(favoriteRestaurantRepository, never()).save(any());
+    }
+
+    @Test
+    void toggleFavoriteRestaurant_restauranteInexistente_lanza404() {
+        User client = buildUser();
+        UUID restId = UUID.randomUUID();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(client));
+        when(restaurantProfileRepository.existsById(restId)).thenReturn(false);
+
+        assertThatThrownBy(() -> restaurantService.toggleFavoriteRestaurant(userEmail, restId))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getMyFavoriteRestaurants_devuelvePaginaDeFavoritos() {
+        Pageable pageable = PageRequest.of(0, 10);
+        User client = buildUser();
+        RestaurantProfile profile = buildProfile(client, ApprovalStatus.APPROVED);
+        FavoriteRestaurant fav = FavoriteRestaurant.builder()
+                .user(client)
+                .restaurantProfile(profile)
+                .build();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(client));
+        when(favoriteRestaurantRepository.findByUserId(client.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(fav), pageable, 1));
+        when(restaurantMapper.toResponse(profile)).thenReturn(buildResponse(profile));
+
+        PageResponse<RestaurantResponse> result = restaurantService.getMyFavoriteRestaurants(userEmail, pageable);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).businessName()).isEqualTo("Sushi House");
     }
 }
