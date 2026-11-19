@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
 import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "@/api/promotionServices";
+import { ImageUploader } from "@/components/ImageUpLoader";
+import RestaurantMap from "@/components/RestaurantMap";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -45,7 +47,7 @@ export default function RestaurantDashboard({
   // Profile form
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UpdateRestaurantRequest>({
-    businessName: "", description: "", address: "", phoneNumber: "", logoUrl: "",
+    businessName: "", cuisineType: "", description: "", address: "", latitude: null, longitude: null, phoneNumber: "", logoUrl: "",
   });
 
   // Promo modal
@@ -81,8 +83,11 @@ export default function RestaurantDashboard({
       setPromotions(promoData.content);
       setProfileForm({
         businessName: restData.businessName || "",
+        cuisineType: restData.cuisineType || "",
         description: restData.description || "",
         address: restData.address || "",
+        latitude: restData.latitude ?? 4.6768,
+        longitude: restData.longitude ?? -74.0482,
         phoneNumber: restData.phoneNumber || "",
         logoUrl: restData.logoUrl || "",
       });
@@ -599,15 +604,26 @@ export default function RestaurantDashboard({
                     </div>
 
                     <form onSubmit={handleSaveProfile} className="space-y-4">
-                      <Field label="Nombre comercial *">
-                        <input
-                          type="text"
-                          required
-                          className={inputCls}
-                          value={profileForm.businessName || ""}
-                          onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
-                        />
-                      </Field>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Nombre comercial *">
+                          <input
+                            type="text"
+                            required
+                            className={inputCls}
+                            value={profileForm.businessName || ""}
+                            onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
+                          />
+                        </Field>
+                        <Field label="Categoría / Tipo de cocina" hint="Ej: Hamburguesas, Sushi, Mexicana, Café, etc.">
+                          <input
+                            type="text"
+                            placeholder="Ej. Hamburguesas, Sushi, Parrilla"
+                            className={inputCls}
+                            value={profileForm.cuisineType || ""}
+                            onChange={(e) => setProfileForm({ ...profileForm, cuisineType: e.target.value })}
+                          />
+                        </Field>
+                      </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field label="Dirección del local *">
@@ -631,26 +647,77 @@ export default function RestaurantDashboard({
                         </Field>
                       </div>
 
-                      <Field label="URL del logo o imagen representativa" hint="Usa una URL de imagen pública (Unsplash, S3, etc.)">
-                        <input
-                          type="url"
-                          placeholder="https://images.unsplash.com/..."
-                          className={inputCls}
-                          value={profileForm.logoUrl || ""}
-                          onChange={(e) => setProfileForm({ ...profileForm, logoUrl: e.target.value })}
+                      {/* Geolocalización en Mapa (HU25) */}
+                      <div className="space-y-3 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-semibold text-content-primary">
+                            Ubicación en el mapa (Geolocalización)
+                          </label>
+                          {profileForm.latitude != null && profileForm.longitude != null && (
+                            <span className="font-mono text-[11px] text-content-muted">
+                              {profileForm.latitude.toFixed(5)}, {profileForm.longitude.toFixed(5)}
+                            </span>
+                          )}
+                        </div>
+
+                        <RestaurantMap
+                          latitude={profileForm.latitude}
+                          longitude={profileForm.longitude}
+                          businessName={profileForm.businessName}
+                          address={profileForm.address}
+                          interactive={true}
+                          heightClassName="h-56"
+                          onLocationChange={(lat, lng) =>
+                            setProfileForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+                          }
                         />
-                        {profileForm.logoUrl && (
-                          <div className="mt-2 flex items-center gap-3 p-2 bg-surface-muted border border-surface-border rounded-button">
-                            <img
-                              src={profileForm.logoUrl}
-                              alt="Logo preview"
-                              className="w-12 h-12 rounded-button object-cover border border-surface-border"
-                              onError={(e) => ((e.target as HTMLElement).style.display = "none")}
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Latitud">
+                            <input
+                              type="number"
+                              step="any"
+                              min="-90"
+                              max="90"
+                              placeholder="4.6768"
+                              className={`${inputCls} font-mono text-xs`}
+                              value={profileForm.latitude ?? ""}
+                              onChange={(e) =>
+                                setProfileForm({
+                                  ...profileForm,
+                                  latitude: e.target.value === "" ? null : parseFloat(e.target.value),
+                                })
+                              }
                             />
-                            <span className="text-xs text-content-secondary">Vista previa del logo</span>
-                          </div>
-                        )}
-                      </Field>
+                          </Field>
+                          <Field label="Longitud">
+                            <input
+                              type="number"
+                              step="any"
+                              min="-180"
+                              max="180"
+                              placeholder="-74.0482"
+                              className={`${inputCls} font-mono text-xs`}
+                              value={profileForm.longitude ?? ""}
+                              onChange={(e) =>
+                                setProfileForm({
+                                  ...profileForm,
+                                  longitude: e.target.value === "" ? null : parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          </Field>
+                        </div>
+                      </div>
+
+                      <ImageUploader
+                        label="Logo o imagen del restaurante"
+                        folder="logos"
+                        aspectRatio="square"
+                        value={profileForm.logoUrl}
+                        onChange={(url) => setProfileForm({ ...profileForm, logoUrl: url })}
+                        hint="Sube el logo de tu restaurante (JPG, PNG o WEBP, máx. 5MB)"
+                      />
 
                       <Field label="Descripción / Especialidad">
                         <textarea
@@ -805,26 +872,14 @@ export default function RestaurantDashboard({
                   </Field>
                 </div>
 
-                <Field label="URL de imagen de la oferta">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    className={inputCls}
-                    value={promoForm.imageUrl || ""}
-                    onChange={(e) => setPromoForm({ ...promoForm, imageUrl: e.target.value })}
-                  />
-                  {promoForm.imageUrl && (
-                    <div className="mt-2 flex items-center gap-3 p-2 bg-surface-muted border border-surface-border rounded-button">
-                      <img
-                        src={promoForm.imageUrl}
-                        alt="Preview"
-                        className="w-16 h-12 rounded-button object-cover border border-surface-border"
-                        onError={(e) => ((e.target as HTMLElement).style.display = "none")}
-                      />
-                      <span className="text-xs text-content-secondary">Así se verá en las tarjetas</span>
-                    </div>
-                  )}
-                </Field>
+                <ImageUploader
+                  label="Imagen de la oferta"
+                  folder="promotions"
+                  aspectRatio="video"
+                  value={promoForm.imageUrl}
+                  onChange={(url) => setPromoForm({ ...promoForm, imageUrl: url })}
+                  hint="Sube una foto atractiva del plato o promoción (máx. 5MB)"
+                />
 
                 <Field label="Descripción / condiciones">
                   <textarea

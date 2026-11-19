@@ -81,8 +81,11 @@ export interface UpdateUserRequest {
 
 export interface UpdateRestaurantRequest {
   businessName?: string;
+  cuisineType?: string;
   description?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl?: string;
   phoneNumber?: string;
 }
@@ -92,10 +95,15 @@ export interface Restaurant {
   id: string;
   businessName: string;
   description: string;
+  cuisineType?: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl: string;
   phoneNumber: string;
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  userId?: string;
+  ownerEnabled?: boolean;
   ownerName: string;
   createdAt: string;
 }
@@ -145,12 +153,22 @@ export interface ApproveRestaurantRequest {
   rejectionReason?: string;
 }
 
+export interface TopRestaurantMetric {
+  restaurantId: string;
+  businessName: string;
+  cuisineType?: string;
+  activePromotions: number;
+  totalRedemptions: number;
+}
+
 export interface SystemMetrics {
   totalUsers: number;
   totalRestaurants: number;
   pendingApprovals: number;
   totalPromotions: number;
   activePromotions: number;
+  totalRedemptions?: number;
+  topRestaurants?: TopRestaurantMetric[];
 }
 
 // --- Redemption ---
@@ -169,4 +187,14 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   respuesta: string;
+}
+
+// ---- Files / Upload ----
+export interface FileUploadResponse {
+  url: string;
+  publicId: string;
+  format: string;
+  size: number; // tamaño en bytes por el backend 
+  width: number;
+  height: number;
 }

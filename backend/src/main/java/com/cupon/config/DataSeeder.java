@@ -543,6 +543,8 @@ public class DataSeeder implements CommandLineRunner {
                     .businessName(businessName)
                     .description(description)
                     .address(address)
+                    .latitude(address.contains("Medellín") ? 6.2091 : 4.6768)
+                    .longitude(address.contains("Medellín") ? -75.5678 : -74.0482)
                     .phoneNumber(phone)
                     .logoUrl(logoUrl)
                     .approvalStatus(status)

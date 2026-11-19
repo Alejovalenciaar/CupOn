@@ -64,6 +64,14 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- Cloudinary: almacenamiento de imágenes -->
+            <dependency>
+                <groupId>com.cloudinary</groupId>
+                <artifactId>cloudinary-http5</artifactId>
+                <version>2.5.0</version>
+            </dependency>
+
+
         <!-- ==================== Flyway ==================== -->
         <dependency>
             <groupId>org.flywaydb</groupId>

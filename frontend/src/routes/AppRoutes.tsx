@@ -9,6 +9,7 @@ import RegisterRestaurantPage from '../features/auth/RegisterRestaurantPage';
 // Client
 import CatalogPage from '../features/client/CatalogPage';
 import FavoritesPage from '../features/client/FavoritesPage';
+import ProfilePage from '../features/client/ProfilePage';
 
 // Restaurant
 import RestaurantDashboard from '../features/restaurant/RestaurantDashboard';
@@ -31,6 +32,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['ROLE_CLIENTE']}>
             <FavoritesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_CLIENTE']}>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

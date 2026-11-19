@@ -24,8 +24,10 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,8 +55,10 @@ class RestaurantControllerTest {
 
     private RestaurantResponse sampleRestaurant(UUID id) {
         return new RestaurantResponse(
-                id, "Sushi House", "Sushi fresco", "Carrera 15 # 90-45",
+                id, "Sushi House", "Sushi fresco", "Japonesa", "Carrera 15 # 90-45",
+                4.6768, -74.0482,
                 null, "3009876543", ApprovalStatus.APPROVED,
+                UUID.randomUUID(), true,
                 "resto@cupon.com", LocalDateTime.now());
     }
 
@@ -63,18 +67,33 @@ class RestaurantControllerTest {
     @Test
     void getAll_esPublico_devuelve200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(restaurantService.getApprovedRestaurants(any()))
+        when(restaurantService.getApprovedRestaurants(any(), any(), any()))
                 .thenReturn(new PageResponse<>(List.of(sampleRestaurant(id)), 0, 20, 1, 1, true));
 
         mockMvc.perform(get("/api/v1/restaurants"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].id").value(id.toString()))
-                .andExpect(jsonPath("$.data.content[0].businessName").value("Sushi House"));
+                .andExpect(jsonPath("$.data.content[0].businessName").value("Sushi House"))
+                .andExpect(jsonPath("$.data.content[0].cuisineType").value("Japonesa"));
+    }
+
+    @Test
+    void getAll_conFiltros_devuelve200() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(restaurantService.getApprovedRestaurants(eq("Sushi"), eq("Japonesa"), any()))
+                .thenReturn(new PageResponse<>(List.of(sampleRestaurant(id)), 0, 20, 1, 1, true));
+
+        mockMvc.perform(get("/api/v1/restaurants")
+                        .param("search", "Sushi")
+                        .param("cuisineType", "Japonesa"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()))
+                .andExpect(jsonPath("$.data.content[0].cuisineType").value("Japonesa"));
     }
 
     @Test
     void getAll_sinResultados_devuelveListaVacia() throws Exception {
-        when(restaurantService.getApprovedRestaurants(any()))
+        when(restaurantService.getApprovedRestaurants(any(), any(), any()))
                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
 
         mockMvc.perform(get("/api/v1/restaurants"))
@@ -149,7 +168,7 @@ class RestaurantControllerTest {
     void updateMyRestaurant_conDatosValidos_devuelve200() throws Exception {
         UUID id = UUID.randomUUID();
         UpdateRestaurantDto request = new UpdateRestaurantDto(
-                "Sushi Premium", "Nuevo desc", "Nueva calle", null, "3112345678");
+                "Sushi Premium", "Nuevo desc", "Japonesa", "Nueva calle", 4.6768, -74.0482, null, "3112345678");
 
         when(restaurantService.updateMyRestaurant(eq("resto@cupon.com"), any()))
                 .thenReturn(sampleRestaurant(id));
@@ -164,7 +183,7 @@ class RestaurantControllerTest {
 
     @Test
     void updateMyRestaurant_sinAuth_devuelve401() throws Exception {
-        UpdateRestaurantDto request = new UpdateRestaurantDto("Nuevo Nombre", null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("Nuevo Nombre", null, null, null, null, null, null, null);
 
         mockMvc.perform(put("/api/v1/restaurants/me")
                 .contentType("application/json")
@@ -175,7 +194,7 @@ class RestaurantControllerTest {
     @Test
     @WithMockUser(authorities = "ROLE_CLIENTE")
     void updateMyRestaurant_conRolCliente_devuelve403() throws Exception {
-        UpdateRestaurantDto request = new UpdateRestaurantDto("Nombre", null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("Nombre", null, null, null, null, null, null, null);
 
         mockMvc.perform(put("/api/v1/restaurants/me")
                 .contentType("application/json")
@@ -186,7 +205,7 @@ class RestaurantControllerTest {
     @Test
     @WithMockUser(username = "otro@cupon.com", authorities = "ROLE_RESTAURANTE")
     void updateMyRestaurant_sinPerfilAsociado_devuelve404() throws Exception {
-        UpdateRestaurantDto request = new UpdateRestaurantDto("Local Sin Perfil", null, null, null, null);
+        UpdateRestaurantDto request = new UpdateRestaurantDto("Local Sin Perfil", null, null, null, null, null, null, null);
         when(restaurantService.updateMyRestaurant(eq("otro@cupon.com"), any()))
                 .thenThrow(new ResourceNotFoundException("Perfil de restaurante", "userId", UUID.randomUUID()));
 
@@ -194,5 +213,39 @@ class RestaurantControllerTest {
                 .contentType("application/json")
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound());
+    }
+
+    // ─── GET /restaurants/favorites & POST /restaurants/{id}/favorite ───────
+
+    @Test
+    @WithMockUser(username = "cliente@cupon.com", authorities = "ROLE_CLIENTE")
+    void getMyFavorites_conRolCliente_devuelve200() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(restaurantService.getMyFavoriteRestaurants(eq("cliente@cupon.com"), any()))
+                .thenReturn(new PageResponse<>(List.of(sampleRestaurant(id)), 0, 20, 1, 1, true));
+
+        mockMvc.perform(get("/api/v1/restaurants/favorites"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@cupon.com", authorities = "ROLE_CLIENTE")
+    void toggleFavorite_conRolCliente_devuelve200() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/restaurants/{id}/favorite", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Favorito actualizado"));
+
+        verify(restaurantService).toggleFavoriteRestaurant("cliente@cupon.com", id);
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_RESTAURANTE")
+    void toggleFavorite_conRolRestaurante_devuelve403() throws Exception {
+        mockMvc.perform(post("/api/v1/restaurants/{id}/favorite", UUID.randomUUID()))
+                .andExpect(status().isForbidden());
     }
 }

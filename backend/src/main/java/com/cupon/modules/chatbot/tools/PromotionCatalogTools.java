@@ -73,10 +73,12 @@ public class PromotionCatalogTools {
             String busqueda) {
 
         PageResponse<RestaurantResponse> resultado =
-                restaurantService.getApprovedRestaurants(PageRequest.of(0, 50));
+                restaurantService.getApprovedRestaurants(null, null, PageRequest.of(0, 50));
 
         List<RestaurantResponse> coincidencias = resultado.content().stream()
-                .filter(r -> contieneTexto(r.businessName(), busqueda) || contieneTexto(r.description(), busqueda))
+                .filter(r -> contieneTexto(r.businessName(), busqueda)
+                        || contieneTexto(r.description(), busqueda)
+                        || contieneTexto(r.cuisineType(), busqueda))
                 .limit(MAX_RESULTADOS)
                 .toList();
 
