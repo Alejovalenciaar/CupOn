@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyFavorites, toggleFavorite } from '@/api/promotionServices';
-import { Promotion } from '@/types';
+import {
+  getMyFavoriteRestaurants,
+  toggleFavoriteRestaurant,
+} from '@/api/restaurantServices';
+import { Promotion, Restaurant } from '@/types';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CouponCard from './components/CouponCard';
+import RestaurantCard from './components/RestaurantCard';
 import CouponDetailModal from './components/CouponDetailModal';
 
 interface FavoritesPageProps {
@@ -24,7 +29,9 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
 
   const isClient = currentUser?.role === 'ROLE_CLIENTE';
 
+  const [activeTab, setActiveTab] = useState<'cupones' | 'restaurantes'>('cupones');
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Promotion | null>(null);
@@ -34,9 +41,10 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
     setError(null);
 
     if (isClient) {
-      getMyFavorites(0, 50)
-        .then((data) => {
-          setPromotions(data.content || []);
+      Promise.all([getMyFavorites(0, 50), getMyFavoriteRestaurants(0, 50)])
+        .then(([promosData, restData]) => {
+          setPromotions(promosData.content || []);
+          setRestaurants(restData.content || []);
         })
         .catch((err) => {
           console.error('Error al cargar favoritos:', err);
@@ -48,7 +56,7 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
     }
   }, [isClient]);
 
-  const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
+  const handleToggleFavoritePromo = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       if (isClient) {
@@ -56,7 +64,19 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
       }
       setPromotions((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      console.error('Error al quitar de favoritos:', err);
+      console.error('Error al quitar cupón de favoritos:', err);
+    }
+  };
+
+  const handleToggleFavoriteRestaurant = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (isClient) {
+        await toggleFavoriteRestaurant(id);
+      }
+      setRestaurants((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error('Error al quitar restaurante de favoritos:', err);
     }
   };
 
@@ -75,7 +95,7 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
       />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8 space-y-6">
-        {/* Cabecera */}
+        {/* Cabecera y Pestañas */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -91,9 +111,47 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
               </h1>
             </div>
             <p className="text-xs text-content-secondary mt-0.5">
-              {promotions.length} cupón{promotions.length !== 1 ? 'es' : ''} guardado{promotions.length !== 1 ? 's' : ''}
+              {promotions.length} cupón{promotions.length !== 1 ? 'es' : ''} y{' '}
+              {restaurants.length} restaurante{restaurants.length !== 1 ? 's' : ''} guardado
+              {restaurants.length !== 1 ? 's' : ''}
             </p>
           </div>
+
+          {isClient && (
+            <div className="inline-flex bg-surface-muted p-1 rounded-button border border-surface-border self-start sm:self-auto">
+              <button
+                type="button"
+                id="tab-favoritos-cupones"
+                onClick={() => setActiveTab('cupones')}
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'cupones'
+                    ? 'bg-white text-content-primary shadow-subtle'
+                    : 'text-content-secondary hover:text-content-primary'
+                }`}
+              >
+                <span>🎟️ Cupones</span>
+                <span className="bg-brand-50 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {promotions.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                id="tab-favoritos-restaurantes"
+                onClick={() => setActiveTab('restaurantes')}
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'restaurantes'
+                    ? 'bg-white text-content-primary shadow-subtle'
+                    : 'text-content-secondary hover:text-content-primary'
+                }`}
+              >
+                <span>🍽️ Restaurantes</span>
+                <span className="bg-brand-50 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {restaurants.length}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Estado no autenticado */}
@@ -104,7 +162,7 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
               Inicia sesión para sincronizar tus favoritos
             </h2>
             <p className="text-xs text-content-secondary">
-              Guarda tus cupones preferidos y accede a ellos desde cualquier dispositivo en todo momento.
+              Guarda tus cupones y restaurantes preferidos y accede a ellos desde cualquier dispositivo en todo momento.
             </p>
             <div className="pt-2">
               <button
@@ -141,41 +199,82 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
           </div>
         )}
 
-        {/* Vacío */}
-        {isClient && !loading && !error && promotions.length === 0 && (
-          <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
-            <span className="text-3xl block">🤍</span>
-            <h2 className="text-base font-semibold text-content-primary">
-              No tienes cupones guardados
-            </h2>
-            <p className="text-xs text-content-secondary">
-              Explora las opciones culinarias de la semana y presiona el ❤️ en tus preferidas.
-            </p>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs px-4 py-2 rounded-button transition-colors"
-              >
-                Explorar catálogo
-              </button>
-            </div>
-          </div>
+        {/* Pestaña: Cupones */}
+        {isClient && !loading && !error && activeTab === 'cupones' && (
+          <>
+            {promotions.length === 0 ? (
+              <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
+                <span className="text-3xl block">🤍</span>
+                <h2 className="text-base font-semibold text-content-primary">
+                  No tienes cupones guardados
+                </h2>
+                <p className="text-xs text-content-secondary">
+                  Explora las opciones culinarias de la semana y presiona el ❤️ en tus preferidas.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs px-4 py-2 rounded-button transition-colors"
+                  >
+                    Explorar catálogo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {promotions.map((promo) => (
+                  <CouponCard
+                    key={promo.id}
+                    promo={promo}
+                    isFavorite={true}
+                    onToggleFavorite={handleToggleFavoritePromo}
+                    onSelect={(p) => setSelected(p)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Grid de favoritos */}
-        {isClient && !loading && !error && promotions.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {promotions.map((promo) => (
-              <CouponCard
-                key={promo.id}
-                promo={promo}
-                isFavorite={true}
-                onToggleFavorite={handleToggleFavorite}
-                onSelect={(p) => setSelected(p)}
-              />
-            ))}
-          </div>
+        {/* Pestaña: Restaurantes */}
+        {isClient && !loading && !error && activeTab === 'restaurantes' && (
+          <>
+            {restaurants.length === 0 ? (
+              <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
+                <span className="text-3xl block">🍽️</span>
+                <h2 className="text-base font-semibold text-content-primary">
+                  No tienes restaurantes guardados
+                </h2>
+                <p className="text-xs text-content-secondary">
+                  Guarda tus establecimientos aliados favoritos para encontrar sus ofertas más rápido.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs px-4 py-2 rounded-button transition-colors"
+                  >
+                    Explorar restaurantes
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {restaurants.map((restaurant) => (
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    isFavorite={true}
+                    onToggleFavorite={handleToggleFavoriteRestaurant}
+                    onFilterPromotions={(name) =>
+                      navigate(`/?search=${encodeURIComponent(name)}`)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -186,7 +285,7 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
           promo={selected}
           isFavorite={true}
           onClose={() => setSelected(null)}
-          onToggleFavorite={handleToggleFavorite}
+          onToggleFavorite={handleToggleFavoritePromo}
         />
       )}
     </div>

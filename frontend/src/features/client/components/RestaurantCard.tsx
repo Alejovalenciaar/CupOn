@@ -1,14 +1,22 @@
+import { useState } from 'react';
 import { Restaurant } from '@/types';
+import RestaurantMap from '@/components/RestaurantMap';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: string, e: React.MouseEvent) => void;
   onFilterPromotions: (restaurantName: string) => void;
 }
 
 export default function RestaurantCard({
   restaurant,
+  isFavorite = false,
+  onToggleFavorite,
   onFilterPromotions,
 }: RestaurantCardProps) {
+  const [showMap, setShowMap] = useState(false);
+
   return (
     <div className="group bg-surface-card border border-surface-border rounded-card shadow-subtle hover:shadow-hover transition-all duration-200 flex flex-col overflow-hidden h-full">
       {/* Aspect Ratio 16/9 con recorte superior limpio */}
@@ -28,22 +36,49 @@ export default function RestaurantCard({
             Aliado Oficial
           </span>
         </div>
+
+        {onToggleFavorite && (
+          <button
+            type="button"
+            aria-label={isFavorite ? 'Quitar restaurante de favoritos' : 'Guardar restaurante en favoritos'}
+            onClick={(e) => onToggleFavorite(restaurant.id, e)}
+            className="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm shadow-subtle border border-surface-border flex items-center justify-center hover:bg-white transition-transform active:scale-95"
+          >
+            <span className="text-sm">{isFavorite ? '❤️' : '🤍'}</span>
+          </button>
+        )}
       </div>
 
       {/* Contenido Editorial */}
       <div className="p-4 flex flex-col flex-1">
-        <h4 className="font-semibold tracking-tight text-content-primary text-base mb-1 group-hover:text-brand-600 transition-colors">
-          {restaurant.businessName}
-        </h4>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h4 className="font-semibold tracking-tight text-content-primary text-base group-hover:text-brand-600 transition-colors">
+            {restaurant.businessName}
+          </h4>
+          {restaurant.cuisineType && (
+            <span className="shrink-0 bg-brand-50 text-brand-700 font-medium px-2 py-0.5 rounded-button text-[11px] border border-brand-200">
+              {restaurant.cuisineType}
+            </span>
+          )}
+        </div>
 
         <p className="text-xs text-content-secondary line-clamp-2 mb-3 flex-1">
           {restaurant.description || 'Especialidad gastronómica con ingredientes seleccionados y ambiente acogedor.'}
         </p>
 
         <div className="space-y-1 text-xs text-content-secondary border-t border-surface-border pt-2.5 mb-3">
-          <div className="flex items-center gap-1.5 truncate">
-            <span className="text-content-muted">📍</span>
-            <span className="truncate">{restaurant.address}</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="text-content-muted">📍</span>
+              <span className="truncate">{restaurant.address}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMap((prev) => !prev)}
+              className="shrink-0 text-[11px] font-medium text-brand-600 hover:text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-button transition-colors"
+            >
+              {showMap ? 'Ocultar mapa' : '🗺️ Mapa'}
+            </button>
           </div>
           {restaurant.phoneNumber && (
             <div className="flex items-center gap-1.5 truncate">
@@ -52,6 +87,19 @@ export default function RestaurantCard({
             </div>
           )}
         </div>
+
+        {showMap && (
+          <div className="mb-3">
+            <RestaurantMap
+              latitude={restaurant.latitude}
+              longitude={restaurant.longitude}
+              businessName={restaurant.businessName}
+              address={restaurant.address}
+              interactive={false}
+              heightClassName="h-44"
+            />
+          </div>
+        )}
 
         <button
           type="button"

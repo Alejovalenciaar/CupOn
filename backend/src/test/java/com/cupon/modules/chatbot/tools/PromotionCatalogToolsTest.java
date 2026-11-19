@@ -54,8 +54,10 @@ class PromotionCatalogToolsTest {
         return new RestaurantResponse(
                 UUID.randomUUID(), "Bella Italia Trattoria",
                 "Rincón gastronómico italiano con pastas artesanales",
-                "Carrera 11 # 85-32, Bogotá", null, null,
-                ApprovalStatus.APPROVED, "Gianluigi Rossi", LocalDateTime.now());
+                "Italiana",
+                "Carrera 11 # 85-32, Bogotá", null, null, null, null,
+                ApprovalStatus.APPROVED, UUID.randomUUID(), true,
+                "Gianluigi Rossi", LocalDateTime.now());
     }
 
     @Test
@@ -98,7 +100,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarRestaurantes_conCoincidenciaExacta_devuelveSusDatos() {
-        when(restaurantService.getApprovedRestaurants(any(Pageable.class)))
+        when(restaurantService.getApprovedRestaurants(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(restauranteItaliano()), 0, 50, 1, 1, true));
 
         String resultado = promotionCatalogTools.buscarRestaurantes("italiano");
@@ -110,7 +112,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarRestaurantes_conPluralEnEspanol_coincidePorRaizDePalabra() {
-        when(restaurantService.getApprovedRestaurants(any(Pageable.class)))
+        when(restaurantService.getApprovedRestaurants(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(restauranteItaliano()), 0, 50, 1, 1, true));
 
         // "italianos" (plural) no aparece literalmente en "italiano"/"Italia",
@@ -122,7 +124,7 @@ class PromotionCatalogToolsTest {
 
     @Test
     void buscarRestaurantes_sinCoincidencias_devuelveMensajeClaroYNoInventaDatos() {
-        when(restaurantService.getApprovedRestaurants(any(Pageable.class)))
+        when(restaurantService.getApprovedRestaurants(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageResponse<>(List.of(restauranteItaliano()), 0, 50, 1, 1, true));
 
         String resultado = promotionCatalogTools.buscarRestaurantes("mexicano");

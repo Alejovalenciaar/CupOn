@@ -57,8 +57,10 @@ class AdminControllerTest {
 
     private RestaurantResponse sampleRestaurant(UUID id) {
         return new RestaurantResponse(
-                id, "Pizza Feliz", "desc", "Calle 1",
+                id, "Pizza Feliz", "desc", "Pizzería", "Calle 1",
+                null, null,
                 null, "3001234567", ApprovalStatus.PENDING,
+                UUID.randomUUID(), true,
                 "owner@cupon.com", LocalDateTime.now());
     }
 
@@ -220,6 +222,17 @@ class AdminControllerTest {
     void deletePromotion_sinAuth_devuelve401() throws Exception {
         mockMvc.perform(delete("/api/v1/admin/promotions/{id}", UUID.randomUUID()))
                 .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void getAllPromotions_conRolAdmin_devuelve200() throws Exception {
+        when(adminService.getAllPromotions(any()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true));
+
+        mockMvc.perform(get("/api/v1/admin/promotions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     // ─── getMetrics ─────────────────────────────────────────────────────────

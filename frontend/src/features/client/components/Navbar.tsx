@@ -52,15 +52,34 @@ export default function Navbar({ currentUser, favoriteCount, onLogout }: NavbarP
               </span>
             )}
           </Link>
+          {currentUser?.role === 'ROLE_CLIENTE' && (
+            <Link
+              to="/profile"
+              className="hover:text-brand-600 transition-colors py-1"
+            >
+              Mi Perfil
+            </Link>
+          )}
         </nav>
 
         {/* Right actions: Auth */}
         <div className="flex items-center gap-2.5">
           {currentUser ? (
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-block text-xs text-content-secondary bg-surface-muted px-2.5 py-1 rounded-button border border-surface-border">
-                {currentUser.email}
-              </span>
+              {currentUser.role === 'ROLE_CLIENTE' ? (
+                <Link
+                  to="/profile"
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs text-content-secondary hover:text-brand-600 bg-surface-muted hover:bg-surface-border px-2.5 py-1 rounded-button border border-surface-border transition-colors"
+                  title="Ir a mi perfil"
+                >
+                  <span>👤</span>
+                  <span>{currentUser.email}</span>
+                </Link>
+              ) : (
+                <span className="hidden sm:inline-block text-xs text-content-secondary bg-surface-muted px-2.5 py-1 rounded-button border border-surface-border">
+                  {currentUser.email}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={onLogout}

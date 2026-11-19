@@ -31,11 +31,20 @@ public class RestaurantProfile extends BaseEntity {
     @Column(name = "business_name", nullable = false, length = 200)
     private String businessName;
 
+    @Column(name = "cuisine_type", length = 100)
+    private String cuisineType;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(length = 500)
     private String address;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
