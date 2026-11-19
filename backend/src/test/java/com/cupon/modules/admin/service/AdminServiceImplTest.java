@@ -225,7 +225,7 @@ class AdminServiceImplTest {
                 DiscountType.PERCENTAGE, java.math.BigDecimal.TEN, java.math.BigDecimal.ZERO,
                 LocalDateTime.now(), LocalDateTime.now().plusDays(5),
                 100, 0, PromotionStatus.DISABLED, null, "Pizza Feliz", UUID.randomUUID(),
-                java.util.Set.of(), LocalDateTime.now(), java.util.Set.of(), false
+                java.util.Set.of(), LocalDateTime.now(), java.util.Set.of(), null, null, false, 0L
         );
 
         when(promotionRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(promo), pageable, 1));

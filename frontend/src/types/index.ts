@@ -153,11 +153,10 @@ export interface Promotion {
   restaurantId: string;
   categories: string[];
   daysOfWeek?: string[];
-  currentlyActive?: boolean;
-  createdAt: string;
-  daysOfWeek?: string[];
   startTime?: string | null;
   endTime?: string | null;
+  currentlyActive?: boolean;
+  createdAt: string;
 }
 
 // --- Admin ---

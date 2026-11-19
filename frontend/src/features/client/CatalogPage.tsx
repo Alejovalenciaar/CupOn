@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getPromotions, toggleFavorite, getMyFavorites } from "@/api/promotionServices";
-import { getRestaurants } from "@/api/restaurantServices";
-import type { Promotion, Restaurant } from "@/types";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { getPromotions, toggleFavorite, getMyFavorites, getCategories, getSharedPromotion } from "@/api/promotionServices";
+import {
+  getRestaurants,
+  toggleFavoriteRestaurant,
+  getMyFavoriteRestaurants,
+} from "@/api/restaurantServices";
+import type { Category, Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CouponCard from "./components/CouponCard";
@@ -34,6 +38,10 @@ const WEEK_DAYS = [
 
 export default function CatalogPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get("search") || "";
+  // Promoción abierta desde un enlace compartido (/promo/:id)
+  const { id: sharedPromoId } = useParams<{ id: string }>();
 
   // Sesión
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(() => {
@@ -87,6 +95,9 @@ export default function CatalogPage() {
   useEffect(() => {
     fetchPromotions();
     fetchRestaurants();
+    getCategories()
+      .then(setCategories)
+      .catch(() => {});
 
     // Sincronizar favoritos si hay sesión de cliente
     if (currentUser?.role === "ROLE_CLIENTE") {

@@ -1,5 +1,5 @@
 -- =====================================================
--- V5: Franja horaria diaria en que aplica una promoción
+-- V8: Franja horaria diaria en que aplica una promoción
 -- =====================================================
 
 -- Ambas columnas son opcionales: NULL en las dos significa que la promoción

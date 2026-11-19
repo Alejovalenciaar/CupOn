@@ -1,5 +1,5 @@
 -- =====================================================
--- V6: Contador de vistas del detalle de una promoción
+-- V9: Contador de vistas del detalle de una promoción
 -- =====================================================
 
 ALTER TABLE promotions

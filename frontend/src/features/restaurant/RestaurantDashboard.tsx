@@ -1,7 +1,17 @@
 import { useState, useEffect } from "react";
 import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category, PromotionStats } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
-import { getMyPromotions, createPromotion, updatePromotion, deletePromotion, updatePromotionStatus } from "@/api/promotionServices";
+import {
+  getMyPromotions,
+  getMyPromotionStats,
+  getCategories,
+  createPromotion,
+  updatePromotion,
+  deletePromotion,
+  updatePromotionStatus,
+} from "@/api/promotionServices";
+import { ImageUploader } from "@/components/ImageUpLoader";
+import RestaurantMap from "@/components/RestaurantMap";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
