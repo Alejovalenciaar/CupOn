@@ -49,18 +49,42 @@ export default function AdminDashboard({
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [metricsData, pendingData, restaurantsData, promotionsData] = await Promise.all([
+      const [metricsRes, pendingRes, restaurantsRes, promotionsRes] = await Promise.allSettled([
         getSystemMetrics(),
         getPendingRestaurants(0, 50),
         getRestaurants(0, 50),
         getAdminPromotions(0, 50),
       ]);
-      setMetrics(metricsData);
-      setPendingRestaurants(pendingData.content || []);
-      setAllRestaurants(restaurantsData.content || []);
-      setAllPromotions(promotionsData.content || []);
-    } catch {
-      showToast("Error al cargar los datos del panel.", "error");
+
+      let hasError = false;
+
+      if (metricsRes.status === "fulfilled") {
+        setMetrics(metricsRes.value);
+      } else {
+        hasError = true;
+      }
+
+      if (pendingRes.status === "fulfilled") {
+        setPendingRestaurants(pendingRes.value.content || []);
+      } else {
+        hasError = true;
+      }
+
+      if (restaurantsRes.status === "fulfilled") {
+        setAllRestaurants(restaurantsRes.value.content || []);
+      } else {
+        hasError = true;
+      }
+
+      if (promotionsRes.status === "fulfilled") {
+        setAllPromotions(promotionsRes.value.content || []);
+      } else {
+        hasError = true;
+      }
+
+      if (hasError) {
+        showToast("Error al cargar algunos datos del panel.", "error");
+      }
     } finally {
       setLoading(false);
     }

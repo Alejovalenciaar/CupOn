@@ -22,10 +22,11 @@ public interface RestaurantProfileRepository extends JpaRepository<RestaurantPro
     @Query("""
             SELECT r FROM RestaurantProfile r
             WHERE r.approvalStatus = :status
-            AND (:search IS NULL
-                OR LOWER(r.businessName) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(r.description) LIKE LOWER(CONCAT('%', :search, '%')))
-            AND (:cuisineType IS NULL OR LOWER(r.cuisineType) = LOWER(:cuisineType))
+            AND (CAST(:search AS string) IS NULL
+                OR LOWER(r.businessName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                OR LOWER(r.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+            AND (CAST(:cuisineType AS string) IS NULL
+                OR LOWER(r.cuisineType) = LOWER(CAST(:cuisineType AS string)))
             """)
     Page<RestaurantProfile> findApprovedWithFilters(
             @Param("status") ApprovalStatus status,
