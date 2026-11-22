@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import type { AuthResponse } from '../types';
 
 interface ProtectedRouteProps {
@@ -8,23 +9,14 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const location = useLocation();
-  const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('cupon_user');
+  const { user, isAuthenticated } = useAuth();
 
-
-  if (!token || !userStr) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles) {
-    try {
-      const user: AuthResponse = JSON.parse(userStr);
-      if (!allowedRoles.includes(user.role)) {
-        return <Navigate to="/" replace />;
-      }
-    } catch {
-      return <Navigate to="/login" replace />;
-    }
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

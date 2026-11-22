@@ -270,23 +270,22 @@ class AdminServiceImplTest {
 
     @Test
     void getSystemMetrics_devuelveDatosAgregadosYTopRestaurantes() {
-        User owner = buildUser();
-        RestaurantProfile r1 = buildProfile(owner);
-        r1.setBusinessName("Burger House");
-        r1.setCuisineType("Hamburguesas");
-
-        com.cupon.modules.promotion.entity.Promotion p1 = com.cupon.modules.promotion.entity.Promotion.builder()
-                .restaurantProfile(r1)
-                .status(PromotionStatus.ACTIVE)
-                .currentRedemptions(42)
-                .build();
+        UUID restId = UUID.randomUUID();
+        PromotionRepository.TopRestaurantProjection topRow = new PromotionRepository.TopRestaurantProjection() {
+            public UUID getRestaurantId() { return restId; }
+            public String getBusinessName() { return "Burger House"; }
+            public String getCuisineType() { return "Hamburguesas"; }
+            public long getActivePromotions() { return 1L; }
+            public long getTotalRedemptions() { return 42L; }
+        };
 
         when(userRepository.count()).thenReturn(50L);
         when(restaurantProfileRepository.count()).thenReturn(10L);
         when(restaurantProfileRepository.countByApprovalStatus(ApprovalStatus.PENDING)).thenReturn(3L);
         when(promotionRepository.count()).thenReturn(25L);
         when(promotionRepository.countByStatus(PromotionStatus.ACTIVE)).thenReturn(18L);
-        when(promotionRepository.findAll()).thenReturn(List.of(p1));
+        when(promotionRepository.sumAllRedemptions()).thenReturn(42L);
+        when(promotionRepository.findTopRestaurants(any(Pageable.class))).thenReturn(List.of(topRow));
 
         SystemMetricsResponse metrics = adminService.getSystemMetrics();
 
@@ -308,6 +307,8 @@ class AdminServiceImplTest {
         when(restaurantProfileRepository.countByApprovalStatus(ApprovalStatus.PENDING)).thenReturn(0L);
         when(promotionRepository.count()).thenReturn(0L);
         when(promotionRepository.countByStatus(PromotionStatus.ACTIVE)).thenReturn(0L);
+        when(promotionRepository.sumAllRedemptions()).thenReturn(0L);
+        when(promotionRepository.findTopRestaurants(any(Pageable.class))).thenReturn(List.of());
 
         SystemMetricsResponse metrics = adminService.getSystemMetrics();
 
@@ -316,5 +317,7 @@ class AdminServiceImplTest {
         assertThat(metrics.pendingApprovals()).isZero();
         assertThat(metrics.totalPromotions()).isZero();
         assertThat(metrics.activePromotions()).isZero();
+        assertThat(metrics.totalRedemptions()).isZero();
+        assertThat(metrics.topRestaurants()).isEmpty();
     }
 }

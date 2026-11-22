@@ -5,6 +5,7 @@ import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
+import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
 import com.cupon.modules.promotion.dto.RedemptionResponse;
 import com.cupon.modules.promotion.entity.PromotionStatus;
 
@@ -49,10 +50,23 @@ public interface PromotionService {
     PromotionResponse updatePromotionStatus(String userEmail, UUID promotionId, PromotionStatus neStatus);
 
     /**
-     * Canjea un cupón: valida disponibilidad y atomicamente incrementa currentRedemptions.
-     * Accesible por cualquier usuario autenticado (CLIENTE o público anónimo).
+     * Canjea un cupón: valida disponibilidad, registra historial con código de verificación
+     * y atómicamente incrementa currentRedemptions.
      *
-     * @throws com.cupon.common.exception.PromotionNotRedeemableException si el cupón no está activo o está agotado
+     * @throws com.cupon.common.exception.PromotionNotRedeemableException si el cupón no está activo, está agotado o ya fue canjeado por el cliente
      */
-    RedemptionResponse redeemPromotion(UUID promotionId);
+    RedemptionResponse redeemPromotion(UUID promotionId, String userEmail);
+
+    default RedemptionResponse redeemPromotion(UUID promotionId) {
+        return redeemPromotion(promotionId, null);
+    }
+
+    /** Historial de canjes del cliente autenticado. */
+    PageResponse<RedemptionHistoryResponse> getMyRedemptions(String userEmail, Pageable pageable);
+
+    /** Historial de canjes de las promociones del restaurante autenticado. */
+    PageResponse<RedemptionHistoryResponse> getRestaurantRedemptions(String userEmail, Pageable pageable);
+
+    /** Valida en caja el código único de verificación de un canje perteneciente al restaurante. */
+    RedemptionHistoryResponse verifyRedemption(String userEmail, String verificationCode);
 }

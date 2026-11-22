@@ -5,7 +5,10 @@ import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
+import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
+import com.cupon.modules.promotion.dto.RedemptionResponse;
 import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
+import com.cupon.modules.promotion.dto.VerifyRedemptionRequest;
 import com.cupon.modules.promotion.service.PromotionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,9 +54,8 @@ public class PromotionController {
                         @RequestParam(required = false) String search,
                         @RequestParam(required = false) DayOfWeek dayOfWeek,
                         @RequestParam(required = false) UUID categoryId,
-                        @Parameter(description = "'popular' ordena por canjes + favoritos + vistas")
-                        @RequestParam(required = false) String sort,
-                        @PageableDefault(size = 20) Pageable pageable) {
+                        @Parameter(description = "'popular' ordena por canjes + favoritos + vistas") @RequestParam(required = false) String sort,
+                        @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 promotionService.getActivePromotions(search, dayOfWeek, categoryId, sort, pageable)));
         }
@@ -200,15 +203,48 @@ public class PromotionController {
         }
 
         @PostMapping("/{id}/redeem")
-        @Operation(summary = "Canjear un cupón (público)")
+        @Operation(summary = "Canjear un cupón y generar código de verificación")
         @ApiResponses({
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cupón canjeado exitosamente"),
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada"),
-                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Cupón no disponible (agotado, inactivo o vencido)")
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Cupón no disponible (agotado, inactivo, vencido o ya canjeado)")
         })
-        public ResponseEntity<ApiResponse<com.cupon.modules.promotion.dto.RedemptionResponse>> redeemPromotion(
+        public ResponseEntity<ApiResponse<RedemptionResponse>> redeemPromotion(
+                        Authentication authentication,
                         @PathVariable UUID id) {
-                com.cupon.modules.promotion.dto.RedemptionResponse response = promotionService.redeemPromotion(id);
+                String email = authentication != null ? authentication.getName() : null;
+                RedemptionResponse response = promotionService.redeemPromotion(id, email);
                 return ResponseEntity.ok(ApiResponse.success("¡Cupón canjeado exitosamente!", response));
+        }
+
+        @GetMapping("/redemptions/mine")
+        @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
+        @Operation(summary = "Listar mi historial de canjes (cliente)")
+        public ResponseEntity<ApiResponse<PageResponse<RedemptionHistoryResponse>>> getMyRedemptions(
+                        Authentication authentication,
+                        @PageableDefault(size = 20) Pageable pageable) {
+                return ResponseEntity.ok(ApiResponse.success(
+                                promotionService.getMyRedemptions(authentication.getName(), pageable)));
+        }
+
+        @GetMapping("/redemptions/restaurant")
+        @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
+        @Operation(summary = "Listar canjes recientes de mis promociones (restaurante)")
+        public ResponseEntity<ApiResponse<PageResponse<RedemptionHistoryResponse>>> getRestaurantRedemptions(
+                        Authentication authentication,
+                        @PageableDefault(size = 20) Pageable pageable) {
+                return ResponseEntity.ok(ApiResponse.success(
+                                promotionService.getRestaurantRedemptions(authentication.getName(), pageable)));
+        }
+
+        @PostMapping("/redemptions/verify")
+        @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
+        @Operation(summary = "Validar código de verificación de canje en caja (restaurante)")
+        public ResponseEntity<ApiResponse<RedemptionHistoryResponse>> verifyRedemption(
+                        Authentication authentication,
+                        @Valid @RequestBody VerifyRedemptionRequest request) {
+                RedemptionHistoryResponse response = promotionService.verifyRedemption(
+                                authentication.getName(), request.verificationCode());
+                return ResponseEntity.ok(ApiResponse.success("Canje validado correctamente en caja", response));
         }
 }

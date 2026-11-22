@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login, forgotPassword, resetPassword } from "@/api/authServices";
+import { useAuth } from "@/context/AuthContext";
 import type { LoginRequest } from "@/types";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { user, loginSession } = useAuth();
 
   // ---------- Login ----------
   const [form, setForm] = useState<LoginRequest>({ email: "", password: "" });
@@ -26,21 +28,18 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get("token");
     if (tokenParam) {
+      // Enlace del correo de recuperación (/reset-password?token=...): mostrar el formulario
+      // aunque haya una sesión guardada, en vez de redirigir al panel.
       setResetToken(tokenParam);
       setView("reset");
+      return;
     }
-    const savedUser = localStorage.getItem("cupon_user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed.role === "ROLE_RESTAURANTE") navigate("/restaurant");
-        else if (parsed.role === "ROLE_ADMIN") navigate("/admin");
-        else navigate("/");
-      } catch {
-        /* ignore */
-      }
+    if (user) {
+      if (user.role === "ROLE_RESTAURANTE") navigate("/restaurant");
+      else if (user.role === "ROLE_ADMIN") navigate("/admin");
+      else navigate("/");
     }
-  }, [navigate]);
+  }, [navigate, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +47,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const data = await login(form);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("cupon_user", JSON.stringify({ email: data.email, role: data.role }));
+      loginSession(data);
       if (data.role === "ROLE_RESTAURANTE") navigate("/restaurant");
       else if (data.role === "ROLE_ADMIN") navigate("/admin");
       else navigate("/");

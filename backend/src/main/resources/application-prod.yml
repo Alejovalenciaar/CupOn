@@ -1,7 +1,14 @@
 # --- Perfil de producción ---
-# Reduce el nivel de logging para no filtrar parámetros SQL ni detalles internos.
+# Reduce el nivel de logging para no filtrar parámetros SQL ni detalles internos
+# y desactiva la documentación pública de Swagger/OpenAPI.
 logging:
   level:
     com.cupon: INFO
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

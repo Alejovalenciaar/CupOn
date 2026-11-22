@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerClient } from "@/api/authServices";
+import { useAuth } from "@/context/AuthContext";
 import type { RegisterClientRequest } from "@/types";
 
 export default function RegisterClientPage() {
   const navigate = useNavigate();
+  const { loginSession } = useAuth();
   const [form, setForm] = useState<RegisterClientRequest>({
     firstName: "",
     lastName: "",
@@ -22,8 +24,7 @@ export default function RegisterClientPage() {
     setError(null);
     try {
       const data = await registerClient(form);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("cupon_user", JSON.stringify({ email: data.email, role: data.role }));
+      loginSession(data);
       setSuccess("¡Cuenta creada exitosamente! Bienvenido a CupOn.");
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {

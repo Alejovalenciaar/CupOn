@@ -1,19 +1,26 @@
 package com.cupon.modules.promotion.service;
 
 import com.cupon.common.dto.PageResponse;
+import com.cupon.common.exception.DuplicateResourceException;
+import com.cupon.common.exception.PromotionNotRedeemableException;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
+import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
+import com.cupon.modules.promotion.dto.RedemptionResponse;
 import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.Favorite;
 import com.cupon.modules.promotion.entity.Promotion;
 import com.cupon.modules.promotion.entity.PromotionStatus;
+import com.cupon.modules.promotion.entity.Redemption;
 import com.cupon.modules.promotion.mapper.PromotionMapper;
 import com.cupon.modules.promotion.repository.CategoryRepository;
 import com.cupon.modules.promotion.repository.FavoriteRepository;
 import com.cupon.modules.promotion.repository.PromotionRepository;
+import com.cupon.modules.promotion.repository.RedemptionRepository;
+import com.cupon.modules.user.entity.ApprovalStatus;
 import com.cupon.modules.user.entity.RestaurantProfile;
 import com.cupon.modules.user.entity.User;
 import com.cupon.modules.user.repository.RestaurantProfileRepository;
@@ -29,7 +36,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,16 +50,21 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class PromotionServiceImpl implements PromotionService {
 
+    private static final DateTimeFormatter HOUR_FORMAT = DateTimeFormatter.ofPattern("hh:mm a");
+    private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final PromotionRepository promotionRepository;
     private final CategoryRepository categoryRepository;
     private final FavoriteRepository favoriteRepository;
+    private final RedemptionRepository redemptionRepository;
     private final RestaurantProfileRepository restaurantProfileRepository;
     private final UserRepository userRepository;
     private final PromotionMapper promotionMapper;
 
     @Override
     @Cacheable(value = "promotions",
-            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #sort + '_' + #pageable.pageNumber")
+            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #sort + '_' + #pageable.pageNumber + '_' + #pageable.pageSize + '_' + #pageable.sort")
     public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
             String sort, Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
@@ -85,12 +100,19 @@ public class PromotionServiceImpl implements PromotionService {
     @CacheEvict(value = "promotions", allEntries = true)
     public PromotionResponse createPromotion(String userEmail, CreatePromotionRequest request) {
         RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        if (restaurant.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw new AccessDeniedException("Tu restaurante aún no está aprobado para publicar cupones.");
+        }
+        String code = normalizeCode(request.code());
+        if (code != null && promotionRepository.existsByCode(code)) {
+            throw new DuplicateResourceException("Ya existe un cupón con el código '" + code + "'. Usa uno diferente.");
+        }
 
         Promotion promotion = Promotion.builder()
                 .restaurantProfile(restaurant)
                 .title(request.title())
                 .description(request.description())
-                .code(request.code())
+                .code(code)
                 .discountType(request.discountType())
                 .discountValue(request.discountValue())
                 .minPurchase(request.minPurchase())
@@ -100,7 +122,7 @@ public class PromotionServiceImpl implements PromotionService {
                 .endTime(request.endTime())
                 .maxRedemptions(request.maxRedemptions())
                 .imageUrl(request.imageUrl())
-                .status(PromotionStatus.DRAFT)
+                .status(PromotionStatus.ACTIVE)
                 .build();
 
         if (request.categoryIds() != null && !request.categoryIds().isEmpty()) {
@@ -128,9 +150,14 @@ public class PromotionServiceImpl implements PromotionService {
             throw new AccessDeniedException("No tienes permisos para editar esta promoción");
         }
 
+        String code = normalizeCode(request.code());
+        if (code != null && promotionRepository.existsByCodeAndIdNot(code, promotionId)) {
+            throw new DuplicateResourceException("Ya existe un cupón con el código '" + code + "'. Usa uno diferente.");
+        }
+
         promotion.setTitle(request.title());
         promotion.setDescription(request.description());
-        promotion.setCode(request.code());
+        promotion.setCode(code);
         promotion.setDiscountType(request.discountType());
         promotion.setDiscountValue(request.discountValue());
         promotion.setMinPurchase(request.minPurchase());
@@ -254,52 +281,157 @@ public class PromotionServiceImpl implements PromotionService {
     @Override
     @Transactional
     @CacheEvict(value = "promotions", allEntries = true)
-    public com.cupon.modules.promotion.dto.RedemptionResponse redeemPromotion(UUID promotionId) {
+    public RedemptionResponse redeemPromotion(UUID promotionId, String userEmail) {
         Promotion promotion = promotionRepository.findById(promotionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Promoción", "id", promotionId));
 
-        // Validar que esté activa
-        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
-            throw new com.cupon.common.exception.PromotionNotRedeemableException(
-                    "Esta promoción no está activa y no puede ser canjeada."
-            );
+        LocalDateTime now = LocalDateTime.now();
+        validateRedeemable(promotion, now);
+
+        User customer = (userEmail != null && !userEmail.isBlank())
+                ? userRepository.findByEmail(userEmail).orElse(null)
+                : null;
+        if (customer != null && redemptionRepository.existsByUserIdAndPromotionId(customer.getId(), promotionId)) {
+            throw new PromotionNotRedeemableException("Ya canjeaste este cupón anteriormente.");
         }
 
-        // Validar vigencia de fechas
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        if (now.isBefore(promotion.getStartDate())) {
-            throw new com.cupon.common.exception.PromotionNotRedeemableException(
-                    "Esta promoción aún no ha comenzado."
-            );
-        }
-        if (now.isAfter(promotion.getEndDate())) {
-            throw new com.cupon.common.exception.PromotionNotRedeemableException(
-                    "Esta promoción ha expirado."
-            );
+        // Incremento atómico: si otro canje concurrente tomó el último cupo, aquí devuelve 0
+        if (promotionRepository.incrementRedemptionsIfAvailable(promotionId) == 0) {
+            throw new PromotionNotRedeemableException(
+                    "Este cupón ya ha sido canjeado el máximo de veces permitidas.");
         }
 
-        // Validar límite de redenciones (0 = ilimitado)
-        if (promotion.getMaxRedemptions() > 0
-                && promotion.getCurrentRedemptions() >= promotion.getMaxRedemptions()) {
-            throw new com.cupon.common.exception.PromotionNotRedeemableException(
-                    "Este cupón ya ha sido canjeado el máximo de veces permitidas."
-            );
-        }
+        String verificationCode = generateUniqueVerificationCode();
+        Redemption redemption = Redemption.builder()
+                .promotion(promotion)
+                .user(customer)
+                .verificationCode(verificationCode)
+                .verified(false)
+                .redeemedAt(now)
+                .build();
+        redemptionRepository.save(redemption);
 
-        // Incrementar contador
-        promotion.setCurrentRedemptions(promotion.getCurrentRedemptions() + 1);
-        promotionRepository.save(promotion);
-
+        int redeemedCount = promotion.getCurrentRedemptions() + 1;
         int remaining = promotion.getMaxRedemptions() > 0
-                ? promotion.getMaxRedemptions() - promotion.getCurrentRedemptions()
+                ? Math.max(0, promotion.getMaxRedemptions() - redeemedCount)
                 : -1; // -1 = ilimitado
 
-        return new com.cupon.modules.promotion.dto.RedemptionResponse(
+        return new RedemptionResponse(
                 promotion.getId(),
                 promotion.getTitle(),
                 promotion.getCode(),
+                verificationCode,
                 remaining,
                 now
         );
+    }
+
+    @Override
+    public PageResponse<RedemptionHistoryResponse> getMyRedemptions(String userEmail, Pageable pageable) {
+        User user = getUserByEmail(userEmail);
+        Page<RedemptionHistoryResponse> page = redemptionRepository
+                .findByUserIdOrderByRedeemedAtDesc(user.getId(), pageable)
+                .map(this::toRedemptionHistoryResponse);
+        return PageResponse.of(page);
+    }
+
+    @Override
+    public PageResponse<RedemptionHistoryResponse> getRestaurantRedemptions(String userEmail, Pageable pageable) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        Page<RedemptionHistoryResponse> page = redemptionRepository
+                .findByPromotionRestaurantProfileIdOrderByRedeemedAtDesc(restaurant.getId(), pageable)
+                .map(this::toRedemptionHistoryResponse);
+        return PageResponse.of(page);
+    }
+
+    @Override
+    @Transactional
+    public RedemptionHistoryResponse verifyRedemption(String userEmail, String verificationCode) {
+        RestaurantProfile restaurant = getRestaurantProfile(userEmail);
+        String normalized = normalizeCode(verificationCode);
+        if (normalized == null) {
+            throw new ResourceNotFoundException("Canje", "código de verificación", verificationCode);
+        }
+
+        Redemption redemption = redemptionRepository.findByVerificationCode(normalized)
+                .orElseThrow(() -> new ResourceNotFoundException("Canje", "código de verificación", normalized));
+
+        if (!redemption.getPromotion().getRestaurantProfile().getId().equals(restaurant.getId())) {
+            throw new AccessDeniedException("Este código de verificación no corresponde a tu restaurante.");
+        }
+
+        if (redemption.isVerified()) {
+            throw new PromotionNotRedeemableException("Este código de verificación ya fue validado anteriormente.");
+        }
+
+        redemption.setVerified(true);
+        redemption.setVerifiedAt(LocalDateTime.now());
+        Redemption saved = redemptionRepository.save(redemption);
+        return toRedemptionHistoryResponse(saved);
+    }
+
+    private RedemptionHistoryResponse toRedemptionHistoryResponse(Redemption redemption) {
+        Promotion promo = redemption.getPromotion();
+        return new RedemptionHistoryResponse(
+                redemption.getId(),
+                promo.getId(),
+                promo.getTitle(),
+                promo.getRestaurantProfile() != null ? promo.getRestaurantProfile().getBusinessName() : null,
+                promo.getCode(),
+                redemption.getVerificationCode(),
+                promo.getDiscountType(),
+                promo.getDiscountValue(),
+                redemption.getUser() != null ? redemption.getUser().getEmail() : null,
+                redemption.isVerified(),
+                redemption.getVerifiedAt(),
+                redemption.getRedeemedAt()
+        );
+    }
+
+    private String generateUniqueVerificationCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            StringBuilder sb = new StringBuilder("CUP-");
+            for (int i = 0; i < 6; i++) {
+                sb.append(CODE_ALPHABET.charAt(SECURE_RANDOM.nextInt(CODE_ALPHABET.length())));
+            }
+            String candidate = sb.toString();
+            if (!redemptionRepository.existsByVerificationCode(candidate)) {
+                return candidate;
+            }
+        }
+        return "CUP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    /** Reglas de vigencia para canjear: estado, rango de fechas, día de la semana, franja horaria y cupo. */
+    private void validateRedeemable(Promotion promotion, LocalDateTime now) {
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new PromotionNotRedeemableException("Esta promoción no está activa y no puede ser canjeada.");
+        }
+        if (now.isBefore(promotion.getStartDate())) {
+            throw new PromotionNotRedeemableException("Esta promoción aún no ha comenzado.");
+        }
+        if (now.isAfter(promotion.getEndDate())) {
+            throw new PromotionNotRedeemableException("Esta promoción ha expirado.");
+        }
+        if (!promotion.appliesOnDay(now.getDayOfWeek())) {
+            throw new PromotionNotRedeemableException("Esta promoción no es válida hoy. Revisa los días en que aplica.");
+        }
+        if (!promotion.isWithinTimeWindow(now.toLocalTime())) {
+            throw new PromotionNotRedeemableException(String.format(
+                    "Esta promoción solo es válida entre las %s y las %s.",
+                    promotion.getStartTime().format(HOUR_FORMAT), promotion.getEndTime().format(HOUR_FORMAT)));
+        }
+        if (!promotion.hasRedemptionsLeft()) {
+            throw new PromotionNotRedeemableException(
+                    "Este cupón ya ha sido canjeado el máximo de veces permitidas.");
+        }
+    }
+
+    /** Códigos en mayúsculas y sin espacios; vacío se guarda como null para no chocar con la restricción única. */
+    private static String normalizeCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return code.trim().toUpperCase();
     }
 }

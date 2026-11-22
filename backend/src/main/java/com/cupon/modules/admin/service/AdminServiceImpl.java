@@ -20,15 +20,13 @@ import com.cupon.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +57,7 @@ public class AdminServiceImpl implements AdminService {
 
         @Override
         @Transactional
+        @CacheEvict(value = "promotions", allEntries = true)
         public void approveOrRejectRestaurant(UUID restaurantId, ApproveRestaurantRequest request) {
                 RestaurantProfile profile = restaurantProfileRepository.findById(restaurantId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Restaurante", "id", restaurantId));
@@ -97,37 +96,18 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public SystemMetricsResponse getSystemMetrics() {
-        List<Promotion> promotions = promotionRepository.findAll();
+        long totalRedemptions = promotionRepository.sumAllRedemptions();
 
-        long totalRedemptions = promotions.stream()
-                .mapToLong(Promotion::getCurrentRedemptions)
-                .sum();
-
-        Map<RestaurantProfile, List<Promotion>> byRestaurant = promotions.stream()
-                .filter(p -> p.getRestaurantProfile() != null)
-                .collect(Collectors.groupingBy(Promotion::getRestaurantProfile));
-
-        List<TopRestaurantMetric> topRestaurants = byRestaurant.entrySet().stream()
-                .map(entry -> {
-                    RestaurantProfile rest = entry.getKey();
-                    List<Promotion> restPromos = entry.getValue();
-                    long activeCount = restPromos.stream()
-                            .filter(p -> p.getStatus() == PromotionStatus.ACTIVE)
-                            .count();
-                    long redemptions = restPromos.stream()
-                            .mapToLong(Promotion::getCurrentRedemptions)
-                            .sum();
-                    return new TopRestaurantMetric(
-                            rest.getId(),
-                            rest.getBusinessName(),
-                            rest.getCuisineType(),
-                            activeCount,
-                            redemptions
-                    );
-                })
-                .sorted(Comparator.comparingLong(TopRestaurantMetric::totalRedemptions).reversed()
-                        .thenComparing(Comparator.comparingLong(TopRestaurantMetric::activePromotions).reversed()))
-                .limit(5)
+        List<TopRestaurantMetric> topRestaurants = promotionRepository
+                .findTopRestaurants(PageRequest.of(0, 5))
+                .stream()
+                .map(row -> new TopRestaurantMetric(
+                        row.getRestaurantId(),
+                        row.getBusinessName(),
+                        row.getCuisineType(),
+                        row.getActivePromotions(),
+                        row.getTotalRedemptions()
+                ))
                 .toList();
 
         return new SystemMetricsResponse(

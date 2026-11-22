@@ -9,6 +9,7 @@ import {
   deletePromotionByAdmin,
 } from "@/api/adminServices";
 import { getRestaurants } from "@/api/restaurantServices";
+import { downloadCsv } from "@/utils/csv";
 
 interface AdminDashboardProps {
   currentUser?: { email: string; role: string };
@@ -156,15 +157,14 @@ export default function AdminDashboard({
             >
               ☰
             </button>
-            <div className="w-8 h-8 rounded-button bg-red-600 flex items-center justify-center text-white text-sm font-bold select-none">
-              🛡️
-            </div>
-            <div className="hidden sm:block">
-              <span className="font-semibold text-sm text-content-primary">CupOn</span>
-              <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-button">
-                Superadmin
-              </span>
-            </div>
+            <img
+              src="/logo-cupon.svg"
+              alt="CupOn"
+              className="h-7 w-auto object-contain"
+            />
+            <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-button">
+              Superadmin
+            </span>
           </div>
 
           {/* Right actions */}
@@ -222,22 +222,6 @@ export default function AdminDashboard({
                 )}
               </button>
             ))}
-
-            <div className="pt-4 mt-4 border-t border-surface-border">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-content-muted px-2 mb-2">
-                Estado de servicios
-              </p>
-              {[
-                { label: "API Spring Boot", ok: true },
-                { label: "PostgreSQL", ok: true },
-                { label: "Redis Cache", ok: true },
-              ].map((s) => (
-                <div key={s.label} className="flex items-center gap-2 px-2 py-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${s.ok ? "bg-emerald-500" : "bg-red-500"}`} />
-                  <span className="text-xs text-content-secondary">{s.label}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </aside>
 
@@ -272,9 +256,29 @@ export default function AdminDashboard({
               {/* ── MÉTRICAS ──────────────────────────────────────────────── */}
               {activeTab === "metrics" && (
                 <div className="space-y-6">
-                  <div>
-                    <h1 className="text-xl font-bold text-content-primary">Métricas del sistema</h1>
-                    <p className="text-xs text-content-secondary mt-0.5">Monitoreo en tiempo real de la plataforma CupOn</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h1 className="text-xl font-bold text-content-primary">Métricas del sistema</h1>
+                      <p className="text-xs text-content-secondary mt-0.5">Monitoreo en tiempo real de la plataforma CupOn</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadCsv(
+                          `cupon-metricas-${new Date().toISOString().slice(0, 10)}.csv`,
+                          ["Restaurante", "Tipo de cocina", "Promociones activas", "Canjes totales"],
+                          (metrics?.topRestaurants || []).map((r) => [
+                            r.businessName,
+                            r.cuisineType || "",
+                            r.activePromotions,
+                            r.totalRedemptions,
+                          ])
+                        );
+                      }}
+                      className="self-start sm:self-auto bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium px-3.5 py-2 rounded-button transition-colors shadow-subtle"
+                    >
+                      ⬇ Exportar CSV
+                    </button>
                   </div>
 
                   {/* KPIs */}
@@ -428,26 +432,6 @@ export default function AdminDashboard({
                           {Math.max(0, (metrics?.totalRestaurants ?? 0) - (metrics?.pendingApprovals ?? 0))} de {metrics?.totalRestaurants ?? 0} locales
                         </span>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Resumen textual */}
-                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle">
-                    <h2 className="text-sm font-semibold text-content-primary mb-4">Estado del ecosistema</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {[
-                        { title: "API Backend", desc: "Spring Boot 3.4 operando correctamente.", ok: true },
-                        { title: "Base de Datos", desc: "PostgreSQL 16 con persistencia transaccional.", ok: true },
-                        { title: "Caché Redis", desc: "Aceleración de catálogos activa.", ok: true },
-                      ].map((s) => (
-                        <div key={s.title} className="bg-surface-muted border border-surface-border rounded-button p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`w-2 h-2 rounded-full ${s.ok ? "bg-emerald-500" : "bg-red-500"}`} />
-                            <span className="text-xs font-semibold text-content-primary">{s.title}</span>
-                          </div>
-                          <p className="text-xs text-content-secondary leading-relaxed">{s.desc}</p>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>

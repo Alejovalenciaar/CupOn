@@ -11,6 +11,7 @@ public record RedemptionResponse(
         UUID promotionId,
         String promotionTitle,
         String code,
+        String verificationCode,
         int remainingRedemptions,
         LocalDateTime redeemedAt
 ) {

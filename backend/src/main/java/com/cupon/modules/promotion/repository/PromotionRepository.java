@@ -27,9 +27,11 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
     /** Filtros del catálogo compartidos por {@link #search} y {@link #searchPopular}. */
     String CATALOG_FILTER = "WHERE p.status = :status " +
+            "AND p.restaurantProfile.approvalStatus = com.cupon.modules.user.entity.ApprovalStatus.APPROVED " +
             "AND (CAST(:search AS string) IS NULL " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
-            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(p.restaurantProfile.businessName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
             "AND (:dayOfWeek IS NULL OR :dayOfWeek MEMBER OF p.daysOfWeek) " +
             "AND (:categoryId IS NULL OR EXISTS (SELECT c FROM p.categories c WHERE c.id = :categoryId)) ";
 
@@ -63,6 +65,28 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
     long countByStatus(PromotionStatus status);
 
+    @Query("SELECT COALESCE(SUM(p.currentRedemptions), 0) FROM Promotion p")
+    long sumAllRedemptions();
+
+    interface TopRestaurantProjection {
+        UUID getRestaurantId();
+        String getBusinessName();
+        String getCuisineType();
+        long getActivePromotions();
+        long getTotalRedemptions();
+    }
+
+    @Query("SELECT p.restaurantProfile.id AS restaurantId, " +
+           "p.restaurantProfile.businessName AS businessName, " +
+           "p.restaurantProfile.cuisineType AS cuisineType, " +
+           "SUM(CASE WHEN p.status = com.cupon.modules.promotion.entity.PromotionStatus.ACTIVE THEN 1L ELSE 0L END) AS activePromotions, " +
+           "COALESCE(SUM(p.currentRedemptions), 0L) AS totalRedemptions " +
+           "FROM Promotion p " +
+           "GROUP BY p.restaurantProfile.id, p.restaurantProfile.businessName, p.restaurantProfile.cuisineType " +
+           "ORDER BY COALESCE(SUM(p.currentRedemptions), 0L) DESC, " +
+           "SUM(CASE WHEN p.status = com.cupon.modules.promotion.entity.PromotionStatus.ACTIVE THEN 1L ELSE 0L END) DESC")
+    List<TopRestaurantProjection> findTopRestaurants(Pageable pageable);
+
     /** Fila de {@link #countByStatusForRestaurant}: promociones y vistas acumuladas de un estado. */
     interface StatusSummary {
         PromotionStatus getStatus();
@@ -84,6 +108,18 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Promotion p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     int incrementViewCount(@Param("id") UUID id);
+
+    /**
+     * Registra un canje de forma atómica solo si aún quedan cupos (0 = ilimitado).
+     * Evita superar {@code maxRedemptions} con canjes concurrentes. Devuelve 0 si no quedaban cupos.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Promotion p SET p.currentRedemptions = p.currentRedemptions + 1 " +
+           "WHERE p.id = :id AND (p.maxRedemptions <= 0 OR p.currentRedemptions < p.maxRedemptions)")
+    int incrementRedemptionsIfAvailable(@Param("id") UUID id);
+
+    /** Busca otra promoción (distinta a {@code id}) con el mismo código. */
+    boolean existsByCodeAndIdNot(String code, UUID id);
 
     /**
      * Devuelve el número de promociones ACTIVE cuya fecha de fin ya pasó.

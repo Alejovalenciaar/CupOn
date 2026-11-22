@@ -53,19 +53,45 @@ export default function Navbar({ currentUser, favoriteCount, onLogout }: NavbarP
             )}
           </Link>
           {currentUser?.role === 'ROLE_CLIENTE' && (
-            <Link
-              to="/profile"
-              className="hover:text-brand-600 transition-colors py-1"
-            >
-              Mi Perfil
-            </Link>
+            <>
+              <Link
+                to="/redemptions"
+                className="hover:text-brand-600 transition-colors py-1"
+              >
+                Mis Canjes
+              </Link>
+              <Link
+                to="/profile"
+                className="hover:text-brand-600 transition-colors py-1"
+              >
+                Mi Perfil
+              </Link>
+            </>
           )}
         </nav>
 
         {/* Right actions: Auth */}
         <div className="flex items-center gap-2.5">
           {currentUser ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              {currentUser.role === 'ROLE_ADMIN' && (
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-button border border-brand-200 transition-colors"
+                >
+                  <span>←</span>
+                  <span>Volver al panel</span>
+                </Link>
+              )}
+              {currentUser.role === 'ROLE_RESTAURANTE' && (
+                <Link
+                  to="/restaurant"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-button border border-brand-200 transition-colors"
+                >
+                  <span>←</span>
+                  <span>Volver al panel</span>
+                </Link>
+              )}
               {currentUser.role === 'ROLE_CLIENTE' ? (
                 <Link
                   to="/profile"

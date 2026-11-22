@@ -8,6 +8,7 @@ import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.Favorite;
 import com.cupon.modules.promotion.entity.Promotion;
 import com.cupon.modules.promotion.entity.PromotionStatus;
+import com.cupon.modules.user.entity.ApprovalStatus;
 import com.cupon.modules.user.entity.RestaurantProfile;
 import com.cupon.modules.user.entity.Role;
 import com.cupon.modules.user.entity.User;
@@ -60,7 +61,7 @@ class PromotionRepositoryTest {
                 .email("resto@cupon.com").password("x").firstName("Resto").lastName("Test")
                 .role(Role.ROLE_RESTAURANTE).build());
         restaurant = restaurantProfileRepository.save(RestaurantProfile.builder()
-                .user(user).businessName("Resto Test").build());
+                .user(user).businessName("Resto Test").approvalStatus(ApprovalStatus.APPROVED).build());
 
         sushi = categoryRepository.save(Category.builder().name("Sushi").build());
         postres = categoryRepository.save(Category.builder().name("Postres").build());
@@ -104,6 +105,28 @@ class PromotionRepositoryTest {
     }
 
     @Test
+    void search_porNombreDeRestaurante_devuelveSusPromociones() {
+        RestaurantProfile other = saveRestaurant("la-parrilla@cupon.com", "La Parrilla Real", ApprovalStatus.APPROVED);
+        promotionRepository.save(buildPromotion(other, "Descuento en cortes", "PARRILLA1", Set.of()));
+
+        Page<Promotion> result = promotionRepository.search(PromotionStatus.ACTIVE, "Parrilla Real", null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Promotion::getCode).containsExactly("PARRILLA1");
+    }
+
+    @Test
+    void search_excluyePromocionesDeRestaurantesPendientes() {
+        RestaurantProfile pending = saveRestaurant("pendiente@cupon.com", "Resto Pendiente", ApprovalStatus.PENDING);
+        promotionRepository.save(buildPromotion(pending, "Oferta oculta", "PEND1", Set.of()));
+
+        Page<Promotion> result = promotionRepository.search(PromotionStatus.ACTIVE, null, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Promotion::getCode).doesNotContain("PEND1");
+    }
+
+    @Test
     void incrementViewCount_existente_sumaUnaVistaPorLlamada() {
         Promotion promotion = promotionRepository.findByCode("SUSHI1").orElseThrow();
 
@@ -116,6 +139,56 @@ class PromotionRepositoryTest {
     @Test
     void incrementViewCount_inexistente_noActualizaNada() {
         assertThat(promotionRepository.incrementViewCount(UUID.randomUUID())).isZero();
+    }
+
+    @Test
+    void incrementRedemptionsIfAvailable_conCupo_incrementaYSinCupo_noSuperaElMaximo() {
+        Promotion promotion = promotionRepository.findByCode("SUSHI1").orElseThrow();
+        promotion.setMaxRedemptions(2);
+        promotion.setCurrentRedemptions(1);
+        promotionRepository.saveAndFlush(promotion);
+
+        assertThat(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).isEqualTo(1);
+        assertThat(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).isZero();
+        assertThat(promotionRepository.findById(promotion.getId()).orElseThrow().getCurrentRedemptions()).isEqualTo(2);
+    }
+
+    @Test
+    void incrementRedemptionsIfAvailable_ilimitado_siempreIncrementa() {
+        Promotion promotion = promotionRepository.findByCode("MIX1").orElseThrow();
+        promotion.setMaxRedemptions(0);
+        promotion.setCurrentRedemptions(500);
+        promotionRepository.saveAndFlush(promotion);
+
+        assertThat(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void existsByCodeAndIdNot_ignoraLaPropiaPromocion() {
+        Promotion promotion = promotionRepository.findByCode("SUSHI1").orElseThrow();
+
+        assertThat(promotionRepository.existsByCodeAndIdNot("SUSHI1", promotion.getId())).isFalse();
+        assertThat(promotionRepository.existsByCodeAndIdNot("MIX1", promotion.getId())).isTrue();
+    }
+
+    @Test
+    void sumAllRedemptionsYFindTopRestaurants_agreganEnBaseDeDatos() {
+        Promotion sushi1 = promotionRepository.findByCode("SUSHI1").orElseThrow();
+        sushi1.setCurrentRedemptions(12);
+        promotionRepository.save(sushi1);
+
+        RestaurantProfile topResto = saveRestaurant("top@cupon.com", "Top Burger", ApprovalStatus.APPROVED);
+        Promotion topPromo = buildPromotion(topResto, "Top Promo", "TOP1", Set.of());
+        topPromo.setCurrentRedemptions(30);
+        promotionRepository.saveAndFlush(topPromo);
+
+        assertThat(promotionRepository.sumAllRedemptions()).isEqualTo(42L);
+
+        List<PromotionRepository.TopRestaurantProjection> ranking =
+                promotionRepository.findTopRestaurants(PageRequest.of(0, 5));
+        assertThat(ranking).hasSize(2);
+        assertThat(ranking.get(0).getBusinessName()).isEqualTo("Top Burger");
+        assertThat(ranking.get(0).getTotalRedemptions()).isEqualTo(30L);
     }
 
     @Test
@@ -198,10 +271,14 @@ class PromotionRepositoryTest {
     }
 
     private RestaurantProfile saveRestaurant(String email) {
+        return saveRestaurant(email, "Otro Resto", ApprovalStatus.APPROVED);
+    }
+
+    private RestaurantProfile saveRestaurant(String email, String businessName, ApprovalStatus approvalStatus) {
         User user = userRepository.save(User.builder()
                 .email(email).password("x").firstName("Otro").lastName("Resto")
                 .role(Role.ROLE_RESTAURANTE).build());
         return restaurantProfileRepository.save(RestaurantProfile.builder()
-                .user(user).businessName("Otro Resto").build());
+                .user(user).businessName(businessName).approvalStatus(approvalStatus).build());
     }
 }

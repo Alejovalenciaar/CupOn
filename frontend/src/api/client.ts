@@ -24,9 +24,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Debe borrar la misma clave que usa toda la app ("cupon_user"); si queda,
+      // LoginPage cree que hay sesión y redirige al panel → bucle login ↔ panel.
       localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem('cupon_user');
+      window.dispatchEvent(new Event('cupon:auth-cleared'));
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Restaurant } from '@/types';
+import { formatDistance } from '@/utils/geo';
 import RestaurantMap from '@/components/RestaurantMap';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
   isFavorite?: boolean;
+  distanceKm?: number | null;
   onToggleFavorite?: (id: string, e: React.MouseEvent) => void;
   onFilterPromotions: (restaurantName: string) => void;
 }
@@ -12,6 +15,7 @@ interface RestaurantCardProps {
 export default function RestaurantCard({
   restaurant,
   isFavorite = false,
+  distanceKm = null,
   onToggleFavorite,
   onFilterPromotions,
 }: RestaurantCardProps) {
@@ -30,11 +34,16 @@ export default function RestaurantCard({
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        <div className="absolute top-2.5 start-2.5">
+        <div className="absolute top-2.5 start-2.5 flex items-center gap-1.5">
           <span className="bg-surface-card/90 backdrop-blur-sm text-content-primary border border-surface-border text-xs font-semibold px-2 py-0.5 rounded-button shadow-subtle flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
             Aliado Oficial
           </span>
+          {distanceKm != null && (
+            <span className="bg-brand-600/95 text-white text-[11px] font-semibold px-2 py-0.5 rounded-button shadow-subtle">
+              📍 {formatDistance(distanceKm)}
+            </span>
+          )}
         </div>
 
         {onToggleFavorite && (
@@ -52,9 +61,12 @@ export default function RestaurantCard({
       {/* Contenido Editorial */}
       <div className="p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h4 className="font-semibold tracking-tight text-content-primary text-base group-hover:text-brand-600 transition-colors">
+          <Link
+            to={`/restaurante/${restaurant.id}`}
+            className="font-semibold tracking-tight text-content-primary text-base group-hover:text-brand-600 transition-colors"
+          >
             {restaurant.businessName}
-          </h4>
+          </Link>
           {restaurant.cuisineType && (
             <span className="shrink-0 bg-brand-50 text-brand-700 font-medium px-2 py-0.5 rounded-button text-[11px] border border-brand-200">
               {restaurant.cuisineType}
@@ -101,13 +113,22 @@ export default function RestaurantCard({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => onFilterPromotions(restaurant.businessName)}
-          className="w-full bg-white hover:bg-surface-muted text-content-primary font-medium px-4 py-2 rounded-button text-sm border border-surface-border transition-colors flex items-center justify-center gap-1 shadow-subtle active:scale-[0.99]"
-        >
-          <span>Ver ofertas de este local</span>
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to={`/restaurante/${restaurant.id}`}
+            className="bg-brand-600 hover:bg-brand-700 text-white font-medium px-3 py-2 rounded-button text-xs transition-colors flex items-center justify-center gap-1 shadow-subtle active:scale-[0.99]"
+          >
+            <span>Ver local</span>
+            <span>→</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => onFilterPromotions(restaurant.businessName)}
+            className="bg-white hover:bg-surface-muted text-content-primary font-medium px-3 py-2 rounded-button text-xs border border-surface-border transition-colors flex items-center justify-center gap-1 shadow-subtle active:scale-[0.99]"
+          >
+            <span>Filtrar ofertas</span>
+          </button>
+        </div>
       </div>
     </div>
   );

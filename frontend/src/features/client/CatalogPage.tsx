@@ -6,6 +6,8 @@ import {
   toggleFavoriteRestaurant,
   getMyFavoriteRestaurants,
 } from "@/api/restaurantServices";
+import { useAuth } from "@/context/AuthContext";
+import { haversineKm } from "@/utils/geo";
 import type { Category, Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -43,18 +45,15 @@ export default function CatalogPage() {
   // Promoción abierta desde un enlace compartido (/promo/:id)
   const { id: sharedPromoId } = useParams<{ id: string }>();
 
-  // Sesión
-  const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("cupon_user") || "null");
-    } catch {
-      return null;
-    }
-  });
+  // Sesión centralizada
+  const { user: currentUser, logout: handleLogout } = useAuth();
 
   // Promociones
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loadingPromos, setLoadingPromos] = useState(true);
+  const [loadingMorePromos, setLoadingMorePromos] = useState(false);
+  const [promoPage, setPromoPage] = useState(0);
+  const [hasMorePromos, setHasMorePromos] = useState(false);
   const [errorPromos, setErrorPromos] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [activeSearch, setActiveSearch] = useState(initialQuery);
@@ -69,6 +68,9 @@ export default function CatalogPage() {
   const [errorRest, setErrorRest] = useState<string | null>(null);
   const [restaurantSearch, setRestaurantSearch] = useState("");
   const [selectedCuisine, setSelectedCuisine] = useState("");
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   // Favoritos
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -97,31 +99,20 @@ export default function CatalogPage() {
     fetchRestaurants();
     getCategories()
       .then(setCategories)
-      .catch(() => {});
+      .catch(() => { });
 
     // Sincronizar favoritos si hay sesión de cliente
     if (currentUser?.role === "ROLE_CLIENTE") {
       getMyFavorites(0, 100)
         .then((d) => setFavoriteIds((d.content || []).map((p) => p.id)))
-        .catch(() => {});
+        .catch(() => { });
       getMyFavoriteRestaurants(0, 100)
         .then((d) => setFavoriteRestaurantIds((d.content || []).map((r) => r.id)))
-        .catch(() => {});
+        .catch(() => { });
     }
 
-    // Un enlace compartido se muestra a cualquier rol, sin redirigir
-    if (sharedPromoId) return;
 
-    // Redirigir según rol
-    if (currentUser?.role === "ROLE_RESTAURANTE") {
-      navigate("/restaurant");
-      return;
-    }
-    if (currentUser?.role === "ROLE_ADMIN") {
-      navigate("/admin");
-      return;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Enlace compartido ────────────────────────────────────────────────────
@@ -148,6 +139,8 @@ export default function CatalogPage() {
     getPromotions(q || undefined, 0, 16, dow || undefined, cat || undefined, pop ? "popular" : undefined)
       .then((d) => {
         setPromotions(d.content);
+        setPromoPage(d.page);
+        setHasMorePromos(!d.last);
         setActiveSearch(q || "");
         setActiveDay(dow || "");
         setActiveCategory(cat || "");
@@ -155,6 +148,30 @@ export default function CatalogPage() {
       })
       .catch(() => setErrorPromos("No se pudieron cargar los cupones."))
       .finally(() => setLoadingPromos(false));
+  };
+
+  const handleLoadMorePromotions = () => {
+    if (loadingMorePromos || !hasMorePromos) return;
+    setLoadingMorePromos(true);
+    const nextPage = promoPage + 1;
+    getPromotions(
+      activeSearch || undefined,
+      nextPage,
+      16,
+      activeDay || undefined,
+      activeCategory || undefined,
+      sortPopular ? "popular" : undefined
+    )
+      .then((d) => {
+        setPromotions((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          return [...prev, ...d.content.filter((p) => !existingIds.has(p.id))];
+        });
+        setPromoPage(d.page);
+        setHasMorePromos(!d.last);
+      })
+      .catch(() => setErrorPromos("No se pudieron cargar más cupones."))
+      .finally(() => setLoadingMorePromos(false));
   };
 
   const fetchRestaurants = (search?: string, cuisine?: string) => {
@@ -226,19 +243,50 @@ export default function CatalogPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("cupon_user");
-    setCurrentUser(null);
-  };
-
   const activeCategoryName = categories.find((c) => c.id === activeCategory)?.name;
 
   const displayedPromos = showFavoritesOnly
     ? promotions.filter((p) => favoriteIds.includes(p.id))
     : promotions;
 
-  const displayedRestaurants = restaurants;
+  const handleToggleNearby = () => {
+    if (userCoords) {
+      setUserCoords(null);
+      setGeoError(null);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setGeoError("Tu navegador no soporta geolocalización.");
+      return;
+    }
+    setLocatingUser(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocatingUser(false);
+      },
+      () => {
+        setGeoError("No pudimos obtener tu ubicación. Verifica los permisos del navegador.");
+        setLocatingUser(false);
+      },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
+  };
+
+  const displayedRestaurants = userCoords
+    ? [...restaurants].sort((a, b) => {
+        const distA =
+          a.latitude != null && a.longitude != null
+            ? haversineKm(userCoords.lat, userCoords.lng, a.latitude, a.longitude)
+            : Number.POSITIVE_INFINITY;
+        const distB =
+          b.latitude != null && b.longitude != null
+            ? haversineKm(userCoords.lat, userCoords.lng, b.latitude, b.longitude)
+            : Number.POSITIVE_INFINITY;
+        return distA - distB;
+      })
+    : restaurants;
 
   return (
     <div className="min-h-screen bg-surface-canvas text-content-primary antialiased flex flex-col">
@@ -368,11 +416,10 @@ export default function CatalogPage() {
                   aria-pressed={isActive}
                   title={cat.description}
                   onClick={() => handleCategory(cat.id)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-button text-sm border whitespace-nowrap transition-colors ${
-                    isActive
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-button text-sm border whitespace-nowrap transition-colors ${isActive
                       ? "bg-brand-600 border-brand-600 text-white font-medium shadow-subtle"
                       : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-normal"
-                  }`}
+                    }`}
                 >
                   <span>{CATEGORY_EMOJIS[cat.name] || "🍽️"}</span>
                   <span>{cat.name}</span>
@@ -391,11 +438,10 @@ export default function CatalogPage() {
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => fetchPromotions(undefined, key)}
-                  className={`px-3 py-1 rounded-button text-xs border whitespace-nowrap transition-colors ${
-                    isActive
+                  className={`px-3 py-1 rounded-button text-xs border whitespace-nowrap transition-colors ${isActive
                       ? "bg-brand-600 border-brand-600 text-white font-medium shadow-subtle"
                       : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-normal"
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -412,8 +458,8 @@ export default function CatalogPage() {
                 {activeSearch
                   ? `Ofertas para "${activeSearch}"`
                   : activeCategoryName
-                  ? `Ofertas en ${activeCategoryName}`
-                  : "Cupones vigentes"}
+                    ? `Ofertas en ${activeCategoryName}`
+                    : "Cupones vigentes"}
               </h2>
               <p className="text-xs text-content-secondary mt-0.5">
                 {activeSearch || activeCategoryName
@@ -429,11 +475,10 @@ export default function CatalogPage() {
                 aria-pressed={sortPopular}
                 title="Ordena por canjes, favoritos y vistas"
                 onClick={() => fetchPromotions(undefined, undefined, undefined, !sortPopular)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${
-                  sortPopular
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${sortPopular
                     ? "bg-brand-50 text-brand-700 border-brand-200"
                     : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
-                }`}
+                  }`}
               >
                 <span>🔥</span>
                 <span>Más populares</span>
@@ -442,11 +487,10 @@ export default function CatalogPage() {
                 type="button"
                 id="btn-toggle-favorites"
                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${
-                  showFavoritesOnly
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${showFavoritesOnly
                     ? "bg-brand-50 text-brand-700 border-brand-200"
                     : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
-                }`}
+                  }`}
               >
                 <span>{showFavoritesOnly ? "❤️" : "🤍"}</span>
                 <span>Solo mis favoritos</span>
@@ -489,10 +533,10 @@ export default function CatalogPage() {
                 {showFavoritesOnly
                   ? "Aún no tienes cupones guardados"
                   : activeSearch
-                  ? `No se encontraron ofertas para "${activeSearch}"`
-                  : activeCategoryName
-                  ? `No hay ofertas en ${activeCategoryName} por ahora`
-                  : "No hay ofertas para el día seleccionado"}
+                    ? `No se encontraron ofertas para "${activeSearch}"`
+                    : activeCategoryName
+                      ? `No hay ofertas en ${activeCategoryName} por ahora`
+                      : "No hay ofertas para el día seleccionado"}
               </h3>
               <p className="text-xs text-content-secondary mt-1 mb-4">
                 {showFavoritesOnly
@@ -514,17 +558,31 @@ export default function CatalogPage() {
           )}
 
           {!loadingPromos && !errorPromos && displayedPromos.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayedPromos.map((promo) => (
-                <CouponCard
-                  key={promo.id}
-                  promo={promo}
-                  isFavorite={favoriteIds.includes(promo.id)}
-                  onToggleFavorite={handleToggleFavorite}
-                  onSelect={(p) => setSelected(p)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {displayedPromos.map((promo) => (
+                  <CouponCard
+                    key={promo.id}
+                    promo={promo}
+                    isFavorite={favoriteIds.includes(promo.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                    onSelect={(p) => setSelected(p)}
+                  />
+                ))}
+              </div>
+              {hasMorePromos && !showFavoritesOnly && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadMorePromotions}
+                    disabled={loadingMorePromos}
+                    className="bg-white hover:bg-surface-muted disabled:opacity-50 text-content-primary font-medium text-xs sm:text-sm px-5 py-2.5 rounded-button border border-surface-border transition-colors shadow-subtle"
+                  >
+                    {loadingMorePromos ? "Cargando..." : "Cargar más cupones"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -541,6 +599,21 @@ export default function CatalogPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleToggleNearby}
+                disabled={locatingUser}
+                aria-pressed={Boolean(userCoords)}
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors whitespace-nowrap ${
+                  userCoords
+                    ? "bg-brand-600 border-brand-600 text-white shadow-subtle"
+                    : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted shadow-subtle"
+                }`}
+              >
+                <span>📍</span>
+                <span>{locatingUser ? "Ubicando..." : userCoords ? "Cerca de mí ✓" : "Cerca de mí"}</span>
+              </button>
+
               <select
                 id="restaurant-cuisine-filter"
                 aria-label="Filtrar por tipo de cocina"
@@ -571,6 +644,12 @@ export default function CatalogPage() {
               </div>
             </div>
           </div>
+
+          {geoError && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 rounded-button">
+              {geoError}
+            </div>
+          )}
 
           {loadingRest && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -603,19 +682,26 @@ export default function CatalogPage() {
 
           {!loadingRest && !errorRest && displayedRestaurants.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedRestaurants.map((restaurant) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  isFavorite={favoriteRestaurantIds.includes(restaurant.id)}
-                  onToggleFavorite={handleToggleFavoriteRestaurant}
-                  onFilterPromotions={(name) => {
-                    setSearchTerm(name);
-                    fetchPromotions(name);
-                    document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                />
-              ))}
+              {displayedRestaurants.map((restaurant) => {
+                const distanceKm =
+                  userCoords && restaurant.latitude != null && restaurant.longitude != null
+                    ? haversineKm(userCoords.lat, userCoords.lng, restaurant.latitude, restaurant.longitude)
+                    : null;
+                return (
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    isFavorite={favoriteRestaurantIds.includes(restaurant.id)}
+                    distanceKm={distanceKm}
+                    onToggleFavorite={handleToggleFavoriteRestaurant}
+                    onFilterPromotions={(name) => {
+                      setSearchTerm(name);
+                      fetchPromotions(name);
+                      document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
         </section>

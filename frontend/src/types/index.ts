@@ -195,7 +195,23 @@ export interface RedemptionResponse {
   promotionId: string;
   promotionTitle: string;
   code: string;
+  verificationCode: string;
   remainingRedemptions: number; // -1 = ilimitado
+  redeemedAt: string;
+}
+
+export interface RedemptionHistoryItem {
+  id: string;
+  promotionId: string;
+  promotionTitle: string;
+  restaurantName: string;
+  code: string;
+  verificationCode: string;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountValue: number;
+  customerEmail?: string | null;
+  verified: boolean;
+  verifiedAt?: string | null;
   redeemedAt: string;
 }
 

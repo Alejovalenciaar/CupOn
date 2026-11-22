@@ -128,4 +128,21 @@ public class Promotion extends BaseEntity {
     public boolean isCurrentlyActive() {
         return isCurrentlyActive(LocalDateTime.now());
     }
+
+    /** Sin días configurados la promoción aplica todos los días. */
+    public boolean appliesOnDay(DayOfWeek day) {
+        return daysOfWeek == null || daysOfWeek.isEmpty() || daysOfWeek.contains(day);
+    }
+
+    /** Sin franja configurada (ambas horas nulas) la promoción aplica todo el día. Inicio inclusive, fin exclusive. */
+    public boolean isWithinTimeWindow(LocalTime time) {
+        if (startTime == null || endTime == null) {
+            return true;
+        }
+        return !time.isBefore(startTime) && time.isBefore(endTime);
+    }
+
+    public boolean hasRedemptionsLeft() {
+        return maxRedemptions <= 0 || currentRedemptions < maxRedemptions;
+    }
 }

@@ -204,11 +204,21 @@ export default function CouponDetailModal({
               Este cupón ya no está disponible para canje.
             </div>
           ) : redeemResult ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-card p-3.5 text-center text-emerald-800">
-              <span className="text-xl block mb-1">✅</span>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 text-center text-emerald-800 space-y-2">
+              <span className="text-xl block">✅</span>
               <p className="text-xs font-bold">¡Cupón canjeado con éxito!</p>
-              <p className="text-[11px] text-emerald-700 mt-0.5">
-                Código validado: <strong className="font-mono">{redeemResult.code}</strong>
+              {redeemResult.verificationCode && (
+                <div className="bg-white border border-emerald-200 rounded-button py-2 px-3 inline-block">
+                  <span className="block text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">
+                    Presenta este código en caja
+                  </span>
+                  <span className="font-mono text-lg font-bold tracking-widest text-emerald-900">
+                    {redeemResult.verificationCode}
+                  </span>
+                </div>
+              )}
+              <p className="text-[11px] text-emerald-700">
+                Cupón: <strong className="font-mono">{redeemResult.code}</strong>
               </p>
             </div>
           ) : (

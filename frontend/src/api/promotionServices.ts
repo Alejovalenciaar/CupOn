@@ -1,4 +1,4 @@
-import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, Category, PromotionStats } from "@/types";
+import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, RedemptionHistoryItem, Category, PromotionStats } from "@/types";
 import apiClient from "./client";
 
 /**
@@ -202,6 +202,39 @@ export const getMyFavorites = async (
 export const redeemPromotion = async (id: string): Promise<RedemptionResponse> => {
   const response = await apiClient.post<ApiResponse<RedemptionResponse>>(
     `/promotions/${id}/redeem`
+  );
+  return response.data.data;
+};
+
+/** Historial de canjes del cliente autenticado (ROLE_CLIENTE) */
+export const getMyRedemptions = async (
+  page = 0,
+  size = 20
+): Promise<PageResponse<RedemptionHistoryItem>> => {
+  const response = await apiClient.get<ApiResponse<PageResponse<RedemptionHistoryItem>>>(
+    `/promotions/redemptions/mine?page=${page}&size=${size}`
+  );
+  return response.data.data;
+};
+
+/** Canjes recientes de las promociones del restaurante autenticado (ROLE_RESTAURANTE) */
+export const getRestaurantRedemptions = async (
+  page = 0,
+  size = 30
+): Promise<PageResponse<RedemptionHistoryItem>> => {
+  const response = await apiClient.get<ApiResponse<PageResponse<RedemptionHistoryItem>>>(
+    `/promotions/redemptions/restaurant?page=${page}&size=${size}`
+  );
+  return response.data.data;
+};
+
+/** Valida un código único de verificación (CUP-XXXXXX) en caja (ROLE_RESTAURANTE) */
+export const verifyRedemption = async (
+  verificationCode: string
+): Promise<RedemptionHistoryItem> => {
+  const response = await apiClient.post<ApiResponse<RedemptionHistoryItem>>(
+    "/promotions/redemptions/verify",
+    { verificationCode }
   );
   return response.data.data;
 };

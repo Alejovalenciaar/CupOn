@@ -1,6 +1,8 @@
 package com.cupon.modules.promotion.service;
 
 import com.cupon.common.dto.PageResponse;
+import com.cupon.common.exception.DuplicateResourceException;
+import com.cupon.common.exception.PromotionNotRedeemableException;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
@@ -10,16 +12,20 @@ import com.cupon.modules.promotion.entity.Category;
 import com.cupon.modules.promotion.entity.DiscountType;
 import com.cupon.modules.promotion.entity.Promotion;
 import com.cupon.modules.promotion.entity.PromotionStatus;
+import com.cupon.modules.promotion.entity.Redemption;
 import com.cupon.modules.promotion.mapper.PromotionMapper;
 import com.cupon.modules.promotion.repository.CategoryRepository;
 import com.cupon.modules.promotion.repository.FavoriteRepository;
 import com.cupon.modules.promotion.repository.PromotionRepository;
+import com.cupon.modules.promotion.repository.RedemptionRepository;
+import com.cupon.modules.user.entity.ApprovalStatus;
 import com.cupon.modules.user.entity.RestaurantProfile;
 import com.cupon.modules.user.entity.User;
 import com.cupon.modules.user.repository.RestaurantProfileRepository;
 import com.cupon.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +39,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -59,6 +66,9 @@ class PromotionServiceImplTest {
     private FavoriteRepository favoriteRepository;
 
     @Mock
+    private RedemptionRepository redemptionRepository;
+
+    @Mock
     private RestaurantProfileRepository restaurantProfileRepository;
 
     @Mock
@@ -79,7 +89,11 @@ class PromotionServiceImplTest {
     }
 
     private RestaurantProfile buildRestaurantProfile(User user) {
-        RestaurantProfile restaurant = RestaurantProfile.builder().user(user).businessName("Pizza Feliz").build();
+        RestaurantProfile restaurant = RestaurantProfile.builder()
+                .user(user)
+                .businessName("Pizza Feliz")
+                .approvalStatus(ApprovalStatus.APPROVED)
+                .build();
         restaurant.setId(UUID.randomUUID());
         return restaurant;
     }
@@ -288,7 +302,9 @@ class PromotionServiceImplTest {
 
         promotionService.createPromotion(userEmail, request);
 
-        verify(promotionRepository).save(any(Promotion.class));
+        ArgumentCaptor<Promotion> captor = ArgumentCaptor.forClass(Promotion.class);
+        verify(promotionRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(PromotionStatus.ACTIVE);
     }
 
     @Test
@@ -490,5 +506,222 @@ class PromotionServiceImplTest {
             public long getCount() { return count; }
             public long getViews() { return views; }
         };
+    }
+
+    // ── Código de cupón ──────────────────────────────────────────────────────
+
+    @Test
+    void createPromotion_codigoRepetido_lanzaDuplicateResourceException() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.existsByCode("CODE1")).thenReturn(true);
+
+        assertThatThrownBy(() -> promotionService.createPromotion(userEmail, buildRequest()))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessageContaining("CODE1");
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void createPromotion_normalizaCodigoAMayusculasSinEspacios() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        CreatePromotionRequest request = new CreatePromotionRequest(
+                "2x1", null, "  burger2x1 ", DiscountType.PERCENTAGE, BigDecimal.TEN, BigDecimal.ZERO,
+                LocalDateTime.now(), LocalDateTime.now().plusDays(5), 100, null, Set.of(), Set.of(), null, null);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        promotionService.createPromotion(userEmail, request);
+
+        ArgumentCaptor<Promotion> captor = ArgumentCaptor.forClass(Promotion.class);
+        verify(promotionRepository).save(captor.capture());
+        assertThat(captor.getValue().getCode()).isEqualTo("BURGER2X1");
+    }
+
+    @Test
+    void updatePromotion_codigoDeOtraPromocion_lanzaDuplicateResourceException() {
+        User user = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(user);
+        Promotion promotion = buildPromotion(restaurant);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(restaurant));
+        when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
+        when(promotionRepository.existsByCodeAndIdNot("CODE1", promotion.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> promotionService.updatePromotion(userEmail, promotion.getId(), buildRequest()))
+                .isInstanceOf(DuplicateResourceException.class);
+        verify(promotionRepository, never()).save(any());
+    }
+
+    // ── Canje ────────────────────────────────────────────────────────────────
+
+    private Promotion buildRedeemablePromotion() {
+        Promotion promotion = buildPromotion(buildRestaurantProfile(buildUser()));
+        promotion.setStartDate(LocalDateTime.now().minusDays(1));
+        promotion.setMaxRedemptions(10);
+        promotion.setCurrentRedemptions(3);
+        when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
+        return promotion;
+    }
+
+    @Test
+    void redeemPromotion_valida_incrementaDeFormaAtomicaYDevuelveRestantes() {
+        Promotion promotion = buildRedeemablePromotion();
+        when(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).thenReturn(1);
+        when(redemptionRepository.save(any(Redemption.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var response = promotionService.redeemPromotion(promotion.getId());
+
+        assertThat(response.remainingRedemptions()).isEqualTo(6);
+        assertThat(response.verificationCode()).startsWith("CUP-");
+        verify(promotionRepository).incrementRedemptionsIfAvailable(promotion.getId());
+        verify(redemptionRepository).save(any(Redemption.class));
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void createPromotion_restaurantePendiente_lanzaAccessDeniedException() {
+        User user = buildUser();
+        RestaurantProfile pending = buildRestaurantProfile(user);
+        pending.setApprovalStatus(ApprovalStatus.PENDING);
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(user));
+        when(restaurantProfileRepository.findByUserId(user.getId())).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> promotionService.createPromotion(userEmail, buildRequest()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("aprobado");
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void redeemPromotion_clienteYaCanjeo_lanzaPromotionNotRedeemable() {
+        Promotion promotion = buildRedeemablePromotion();
+        User customer = buildUser();
+        when(userRepository.findByEmail("cliente@cupon.com")).thenReturn(Optional.of(customer));
+        when(redemptionRepository.existsByUserIdAndPromotionId(customer.getId(), promotion.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId(), "cliente@cupon.com"))
+                .isInstanceOf(PromotionNotRedeemableException.class)
+                .hasMessageContaining("Ya canjeaste");
+        verify(promotionRepository, never()).incrementRedemptionsIfAvailable(any());
+    }
+
+    @Test
+    void verifyRedemption_codigoValido_marcaComoVerificado() {
+        User owner = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(owner);
+        Promotion promotion = buildPromotion(restaurant);
+        Redemption redemption = Redemption.builder()
+                .promotion(promotion)
+                .verificationCode("CUP-ABC123")
+                .verified(false)
+                .redeemedAt(LocalDateTime.now())
+                .build();
+        redemption.setId(UUID.randomUUID());
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
+        when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(restaurant));
+        when(redemptionRepository.findByVerificationCode("CUP-ABC123")).thenReturn(Optional.of(redemption));
+        when(redemptionRepository.save(any(Redemption.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = promotionService.verifyRedemption(userEmail, " cup-abc123 ");
+
+        assertThat(result.verified()).isTrue();
+        assertThat(result.verifiedAt()).isNotNull();
+        assertThat(result.verificationCode()).isEqualTo("CUP-ABC123");
+    }
+
+    @Test
+    void verifyRedemption_codigoYaVerificado_lanzaPromotionNotRedeemable() {
+        User owner = buildUser();
+        RestaurantProfile restaurant = buildRestaurantProfile(owner);
+        Promotion promotion = buildPromotion(restaurant);
+        Redemption redemption = Redemption.builder()
+                .promotion(promotion)
+                .verificationCode("CUP-ABC123")
+                .verified(true)
+                .verifiedAt(LocalDateTime.now().minusMinutes(5))
+                .redeemedAt(LocalDateTime.now().minusMinutes(10))
+                .build();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
+        when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(restaurant));
+        when(redemptionRepository.findByVerificationCode("CUP-ABC123")).thenReturn(Optional.of(redemption));
+
+        assertThatThrownBy(() -> promotionService.verifyRedemption(userEmail, "CUP-ABC123"))
+                .isInstanceOf(PromotionNotRedeemableException.class)
+                .hasMessageContaining("validado anteriormente");
+    }
+
+    @Test
+    void verifyRedemption_deOtroRestaurante_lanzaAccessDeniedException() {
+        User owner = buildUser();
+        RestaurantProfile myRestaurant = buildRestaurantProfile(owner);
+        RestaurantProfile otherRestaurant = buildRestaurantProfile(owner);
+        Promotion otherPromo = buildPromotion(otherRestaurant);
+        Redemption redemption = Redemption.builder()
+                .promotion(otherPromo)
+                .verificationCode("CUP-XYZ999")
+                .verified(false)
+                .redeemedAt(LocalDateTime.now())
+                .build();
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
+        when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(myRestaurant));
+        when(redemptionRepository.findByVerificationCode("CUP-XYZ999")).thenReturn(Optional.of(redemption));
+
+        assertThatThrownBy(() -> promotionService.verifyRedemption(userEmail, "CUP-XYZ999"))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void redeemPromotion_ultimoCupoTomadoPorOtroCanje_lanzaPromotionNotRedeemable() {
+        Promotion promotion = buildRedeemablePromotion();
+        when(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).thenReturn(0);
+
+        assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId()))
+                .isInstanceOf(PromotionNotRedeemableException.class)
+                .hasMessageContaining("máximo");
+    }
+
+    @Test
+    void redeemPromotion_diaNoPermitido_lanzaPromotionNotRedeemable() {
+        Promotion promotion = buildRedeemablePromotion();
+        DayOfWeek otherDay = LocalDateTime.now().getDayOfWeek().plus(1);
+        promotion.setDaysOfWeek(new java.util.HashSet<>(Set.of(otherDay)));
+
+        assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId()))
+                .isInstanceOf(PromotionNotRedeemableException.class)
+                .hasMessageContaining("no es válida hoy");
+        verify(promotionRepository, never()).incrementRedemptionsIfAvailable(any());
+    }
+
+    @Test
+    void redeemPromotion_fueraDeFranjaHoraria_lanzaPromotionNotRedeemable() {
+        Promotion promotion = buildRedeemablePromotion();
+        LocalTime now = LocalTime.now();
+        // Franja de 1 minuto que ya pasó (o, cerca de medianoche, que aún no empieza)
+        LocalTime start = now.isAfter(LocalTime.of(0, 10)) ? LocalTime.of(0, 0) : LocalTime.of(23, 0);
+        promotion.setStartTime(start);
+        promotion.setEndTime(start.plusMinutes(1));
+
+        assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId()))
+                .isInstanceOf(PromotionNotRedeemableException.class)
+                .hasMessageContaining("solo es válida entre");
+        verify(promotionRepository, never()).incrementRedemptionsIfAvailable(any());
+    }
+
+    @Test
+    void redeemPromotion_inactiva_lanzaPromotionNotRedeemable() {
+        Promotion promotion = buildRedeemablePromotion();
+        promotion.setStatus(PromotionStatus.DISABLED);
+
+        assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId()))
+                .isInstanceOf(PromotionNotRedeemableException.class);
+        verify(promotionRepository, never()).incrementRedemptionsIfAvailable(any());
     }
 }

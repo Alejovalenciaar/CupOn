@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Promotion } from '@/types';
 import ActiveDaysPills from './ActiveDaysPills';
 
@@ -14,8 +15,15 @@ export default function CouponCard({
   onToggleFavorite,
   onSelect,
 }: CouponCardProps) {
-  const isExpired = new Date(promo.endDate) < new Date();
-  const days = (promo as any).daysOfWeek || [];
+  const now = Date.now();
+  const endMs = new Date(promo.endDate).getTime();
+  const createdMs = promo.createdAt ? new Date(promo.createdAt).getTime() : 0;
+  const isExpired = endMs < now;
+  const isEndingSoon = !isExpired && endMs - now <= 48 * 60 * 60 * 1000;
+  const isNew = !isExpired && createdMs > 0 && now - createdMs <= 3 * 24 * 60 * 60 * 1000;
+  const remaining = promo.maxRedemptions > 0 ? Math.max(0, promo.maxRedemptions - (promo.currentRedemptions || 0)) : null;
+  const isLowStock = !isExpired && remaining !== null && remaining > 0 && remaining <= 10;
+  const days = promo.daysOfWeek || [];
 
   return (
     <div
@@ -44,12 +52,27 @@ export default function CouponCard({
         </button>
 
         {/* Badge de Descuento/Oferta sobrio */}
-        <div className="absolute top-2.5 end-2.5">
+        <div className="absolute top-2.5 end-2.5 flex flex-col items-end gap-1">
           <span className="bg-brand-50 text-brand-700 border border-brand-200 text-xs font-semibold px-2 py-0.5 rounded-button shadow-subtle">
             {promo.discountType === 'PERCENTAGE'
               ? `${promo.discountValue}% OFF`
               : `$${Number(promo.discountValue).toLocaleString()}`}
           </span>
+          {isLowStock && (
+            <span className="bg-red-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-button shadow-subtle">
+              Últimos {remaining}
+            </span>
+          )}
+          {!isLowStock && isEndingSoon && (
+            <span className="bg-amber-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-button shadow-subtle">
+              Termina pronto
+            </span>
+          )}
+          {!isLowStock && !isEndingSoon && isNew && (
+            <span className="bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-button shadow-subtle">
+              Nuevo
+            </span>
+          )}
         </div>
 
         {isExpired && (
@@ -65,9 +88,13 @@ export default function CouponCard({
       <div className="p-4 flex flex-col flex-1">
         {/* Metadatos superiores: Restaurante y Días Activos */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-xs font-medium text-brand-700 truncate tracking-wide uppercase">
+          <Link
+            to={`/restaurante/${promo.restaurantId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs font-medium text-brand-700 hover:underline truncate tracking-wide uppercase"
+          >
             {promo.restaurantName}
-          </span>
+          </Link>
           <ActiveDaysPills days={days} />
         </div>
 
@@ -77,9 +104,15 @@ export default function CouponCard({
         </h3>
 
         {/* Descripción */}
-        <p className="text-xs text-content-secondary line-clamp-2 mb-3 flex-1">
+        <p className="text-xs text-content-secondary line-clamp-2 mb-2 flex-1">
           {promo.description || 'Promoción especial para deleitar tu paladar.'}
         </p>
+
+        {promo.startTime && promo.endTime && (
+          <p className="text-[11px] text-content-muted mb-2">
+            🕒 Válido de {promo.startTime.slice(0, 5)} a {promo.endTime.slice(0, 5)}
+          </p>
+        )}
 
         {/* Información de Vigencia y Cupón */}
         <div className="pt-2.5 border-t border-surface-border flex items-center justify-between text-xs text-content-secondary mb-3">

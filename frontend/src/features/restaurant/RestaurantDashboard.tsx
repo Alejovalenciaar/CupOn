@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category, PromotionStats } from "@/types";
+import { Restaurant, Promotion, CreatePromotionRequest, UpdateRestaurantRequest, Category, PromotionStats, RedemptionHistoryItem } from "@/types";
 import { getMyRestaurant, updateMyRestaurant } from "@/api/restaurantServices";
 import {
   getMyPromotions,
@@ -9,9 +9,12 @@ import {
   updatePromotion,
   deletePromotion,
   updatePromotionStatus,
+  getRestaurantRedemptions,
+  verifyRedemption,
 } from "@/api/promotionServices";
 import { ImageUploader } from "@/components/ImageUpLoader";
 import RestaurantMap from "@/components/RestaurantMap";
+import { downloadCsv } from "@/utils/csv";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -20,7 +23,7 @@ interface RestaurantDashboardProps {
   onCatalogNeedsRefresh?: () => void;
 }
 
-type Tab = "metrics" | "promotions" | "profile";
+type Tab = "metrics" | "promotions" | "redemptions" | "profile";
 
 // ── Campo de formulario reutilizable ──────────────────────────────────────────
 const Field = ({
@@ -45,6 +48,44 @@ const WEEK_DAYS = [
 
 const inputCls = "w-full bg-white border border-surface-border rounded-button px-3 py-2 text-sm text-content-primary placeholder:text-content-muted outline-none focus:border-brand-500 shadow-subtle";
 
+const toLocalDateTimeInput = (date: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const getPromoStatusMeta = (status: Promotion["status"]) => {
+  switch (status) {
+    case "ACTIVE":
+      return {
+        label: "Activa",
+        cardLabel: "● Activa",
+        listCls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+        cardCls: "bg-emerald-600 text-white",
+      };
+    case "DRAFT":
+      return {
+        label: "Borrador",
+        cardLabel: "📝 Borrador",
+        listCls: "bg-slate-100 text-slate-700 border border-slate-200",
+        cardCls: "bg-slate-700 text-white",
+      };
+    case "EXPIRED":
+      return {
+        label: "Expirada",
+        cardLabel: "⌛ Expirada",
+        listCls: "bg-red-50 text-red-700 border border-red-200",
+        cardCls: "bg-red-600 text-white",
+      };
+    default:
+      return {
+        label: "Pausada",
+        cardLabel: "⏸ Pausada",
+        listCls: "bg-surface-muted text-content-muted border border-surface-border",
+        cardCls: "bg-surface-muted text-content-secondary border border-surface-border",
+      };
+  }
+};
+
 export default function RestaurantDashboard({
   currentUser,
   onLogout = () => {
@@ -58,6 +99,10 @@ export default function RestaurantDashboard({
   const [activeTab, setActiveTab] = useState<Tab>("metrics");
   const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [redemptions, setRedemptions] = useState<RedemptionHistoryItem[]>([]);
+  const [verifyCodeInput, setVerifyCodeInput] = useState("");
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [verifyFeedback, setVerifyFeedback] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [stats, setStats] = useState<PromotionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,8 +124,8 @@ export default function RestaurantDashboard({
   const [promoForm, setPromoForm] = useState<CreatePromotionRequest>({
     title: "", description: "", code: "", discountType: "PERCENTAGE",
     discountValue: 20, minPurchase: 0,
-    startDate: new Date().toISOString().slice(0, 16),
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    startDate: toLocalDateTimeInput(new Date()),
+    endDate: toLocalDateTimeInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
     maxRedemptions: 100,
     imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
     daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
@@ -126,6 +171,31 @@ export default function RestaurantDashboard({
   // Si las estadísticas fallan, las tarjetas muestran "—" sin bloquear el resto del panel
   const loadStats = () => {
     getMyPromotionStats().then(setStats).catch(() => setStats(null));
+    getRestaurantRedemptions(0, 30).then((d) => setRedemptions(d.content || [])).catch(() => {});
+  };
+
+  const handleVerifyRedemption = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = verifyCodeInput.trim().toUpperCase();
+    if (!cleaned) return;
+    setVerifyingCode(true);
+    setVerifyFeedback(null);
+    try {
+      const verified = await verifyRedemption(cleaned);
+      setVerifyFeedback({
+        msg: `Canje validado: ${verified.promotionTitle} (${verified.verificationCode})`,
+        type: "success",
+      });
+      setVerifyCodeInput("");
+      getRestaurantRedemptions(0, 30).then((d) => setRedemptions(d.content || [])).catch(() => {});
+    } catch (err: any) {
+      setVerifyFeedback({
+        msg: err.response?.data?.message || "No se pudo validar el código.",
+        type: "error",
+      });
+    } finally {
+      setVerifyingCode(false);
+    }
   };
 
   const refreshPromotions = async () => {
@@ -155,8 +225,8 @@ export default function RestaurantDashboard({
     setPromoForm({
       title: "", description: "", code: "", discountType: "PERCENTAGE",
       discountValue: 20, minPurchase: 0,
-      startDate: new Date().toISOString().slice(0, 16),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      startDate: toLocalDateTimeInput(new Date()),
+      endDate: toLocalDateTimeInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
       maxRedemptions: 100,
       imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
       daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
@@ -174,8 +244,8 @@ export default function RestaurantDashboard({
       discountType: promo.discountType,
       discountValue: promo.discountValue,
       minPurchase: promo.minPurchase || 0,
-      startDate: promo.startDate ? promo.startDate.slice(0, 16) : new Date().toISOString().slice(0, 16),
-      endDate: promo.endDate ? promo.endDate.slice(0, 16) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      startDate: promo.startDate ? promo.startDate.slice(0, 16) : toLocalDateTimeInput(new Date()),
+      endDate: promo.endDate ? promo.endDate.slice(0, 16) : toLocalDateTimeInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
       maxRedemptions: promo.maxRedemptions || 100,
       imageUrl: promo.imageUrl || "",
       daysOfWeek: promo.daysOfWeek || [],
@@ -188,6 +258,50 @@ export default function RestaurantDashboard({
       endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
     });
     setIsPromoModalOpen(true);
+  };
+
+  const openDuplicatePromo = (promo: Promotion) => {
+    setEditingPromoId(null);
+    setPromoError(null);
+    setPromoForm({
+      title: `${promo.title} (Copia)`,
+      description: promo.description || "",
+      code: promo.code ? `${promo.code}2`.slice(0, 50) : "",
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      minPurchase: promo.minPurchase || 0,
+      startDate: toLocalDateTimeInput(new Date()),
+      endDate: toLocalDateTimeInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+      maxRedemptions: promo.maxRedemptions || 100,
+      imageUrl: promo.imageUrl || "",
+      daysOfWeek: promo.daysOfWeek || [],
+      categoryIds: categories.length
+        ? categories.filter((c) => promo.categories?.includes(c.name)).map((c) => c.id)
+        : [],
+      startTime: promo.startTime ? promo.startTime.slice(0, 5) : "",
+      endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
+    });
+    setIsPromoModalOpen(true);
+  };
+
+  const handleExportRestaurantCsv = () => {
+    const slug = (restaurantData?.businessName || "restaurante").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    downloadCsv(
+      `metricas-${slug}.csv`,
+      ["Código", "Título", "Estado", "Tipo descuento", "Valor", "Vistas", "Canjes", "Límite", "Inicio", "Vencimiento"],
+      promotions.map((p) => [
+        p.code,
+        p.title,
+        p.status,
+        p.discountType,
+        p.discountValue,
+        p.viewCount || 0,
+        p.currentRedemptions || 0,
+        p.maxRedemptions || "Ilimitado",
+        p.startDate,
+        p.endDate,
+      ])
+    );
   };
 
   const handleSavePromo = async (e: React.FormEvent) => {
@@ -271,6 +385,7 @@ export default function RestaurantDashboard({
   const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
     { id: "metrics", label: "Métricas y rendimiento", icon: "📊" },
     { id: "promotions", label: `Mis cupones (${promotions.length})`, icon: "🎟️" },
+    { id: "redemptions", label: `Validar canje (${redemptions.length})`, icon: "✅" },
     { id: "profile", label: "Perfil del local", icon: "🏢" },
   ];
 
@@ -320,7 +435,9 @@ export default function RestaurantDashboard({
             <button
               type="button"
               onClick={openCreatePromo}
-              className="text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-button transition-colors shadow-subtle"
+              disabled={!isApproved}
+              title={!isApproved ? "Tu restaurante debe estar aprobado para publicar cupones" : undefined}
+              className="text-xs font-semibold bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-button transition-colors shadow-subtle"
             >
               + Nuevo cupón
             </button>
@@ -425,13 +542,24 @@ export default function RestaurantDashboard({
                       <h1 className="text-xl font-bold text-content-primary">Rendimiento de tus cupones</h1>
                       <p className="text-xs text-content-secondary mt-0.5">Estadísticas en tiempo real de atracción y canjes</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={openCreatePromo}
-                      className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2 rounded-button transition-colors shadow-subtle"
-                    >
-                      + Publicar cupón
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExportRestaurantCsv}
+                        disabled={promotions.length === 0}
+                        className="bg-white hover:bg-surface-muted disabled:opacity-50 text-content-secondary border border-surface-border text-xs font-medium px-3 py-2 rounded-button transition-colors shadow-subtle"
+                      >
+                        ⬇ Exportar CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openCreatePromo}
+                        disabled={!isApproved}
+                        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-button transition-colors shadow-subtle"
+                      >
+                        + Publicar cupón
+                      </button>
+                    </div>
                   </div>
 
                   {/* KPIs de estado (GET /promotions/mine/stats) */}
@@ -499,12 +627,8 @@ export default function RestaurantDashboard({
                                     {promo.code}
                                   </span>
                                   <span className="text-xs font-medium text-content-primary truncate">{promo.title}</span>
-                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-button flex-shrink-0 ${
-                                    promo.status === "ACTIVE"
-                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                      : "bg-surface-muted text-content-muted border border-surface-border"
-                                  }`}>
-                                    {promo.status === "ACTIVE" ? "Activa" : "Pausada"}
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-button flex-shrink-0 ${getPromoStatusMeta(promo.status).listCls}`}>
+                                    {getPromoStatusMeta(promo.status).label}
                                   </span>
                                 </div>
                                 <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2">👁️ {promo.viewCount || 0} · {cur}/{max} ({pct}%)</span>
@@ -577,12 +701,8 @@ export default function RestaurantDashboard({
                               alt={promo.title}
                               className="w-full h-36 object-cover"
                             />
-                            <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-button ${
-                              promo.status === "ACTIVE"
-                                ? "bg-emerald-600 text-white"
-                                : "bg-surface-muted text-content-secondary border border-surface-border"
-                            }`}>
-                              {promo.status === "ACTIVE" ? "● Activa" : "⏸ Pausada"}
+                            <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-button ${getPromoStatusMeta(promo.status).cardCls}`}>
+                              {getPromoStatusMeta(promo.status).cardLabel}
                             </span>
                             <span className="absolute top-2 right-2 text-[10px] font-bold bg-brand-600 text-white px-2 py-0.5 rounded-button">
                               {promo.discountType === "PERCENTAGE" ? `${promo.discountValue}% OFF` : `$${Number(promo.discountValue).toLocaleString()}`}
@@ -627,6 +747,15 @@ export default function RestaurantDashboard({
                             </button>
                             <button
                               type="button"
+                              onClick={() => openDuplicatePromo(promo)}
+                              disabled={!isApproved}
+                              className="p-1.5 text-sm rounded-button border border-surface-border bg-white hover:bg-surface-muted disabled:opacity-50 transition-colors"
+                              title="Duplicar cupón"
+                            >
+                              📋
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleSharePromo(promo)}
                               className="p-1.5 text-sm rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
                               title="Compartir enlace"
@@ -646,6 +775,93 @@ export default function RestaurantDashboard({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── VALIDAR CANJE EN CAJA ────────────────────────────────── */}
+              {activeTab === "redemptions" && (
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Validar canje en caja</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">
+                      Ingresa el código único que presenta el cliente (ej. CUP-A7X9K2) para confirmar el uso del cupón
+                    </p>
+                  </div>
+
+                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle max-w-xl">
+                    <form onSubmit={handleVerifyRedemption} className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="text"
+                        required
+                        placeholder="CUP-XXXXXX"
+                        value={verifyCodeInput}
+                        onChange={(e) => setVerifyCodeInput(e.target.value.toUpperCase())}
+                        className={`${inputCls} font-mono tracking-widest uppercase flex-1`}
+                      />
+                      <button
+                        type="submit"
+                        disabled={verifyingCode}
+                        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold px-5 py-2.5 rounded-button transition-colors shadow-subtle whitespace-nowrap"
+                      >
+                        {verifyingCode ? "Validando..." : "Validar código"}
+                      </button>
+                    </form>
+                    {verifyFeedback && (
+                      <div
+                        className={`mt-3 px-3 py-2.5 rounded-button text-xs border ${
+                          verifyFeedback.type === "success"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : "bg-red-50 border-red-200 text-red-700"
+                        }`}
+                      >
+                        {verifyFeedback.msg}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle">
+                    <h2 className="text-sm font-semibold text-content-primary mb-4">Historial de canjes recientes</h2>
+                    {redemptions.length === 0 ? (
+                      <p className="text-xs text-content-muted text-center py-6">
+                        Aún no hay canjes registrados para tus promociones.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-surface-border">
+                        {redemptions.map((item) => (
+                          <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-xs font-bold bg-surface-muted border border-surface-border px-2 py-0.5 rounded-button text-content-primary">
+                                  {item.verificationCode}
+                                </span>
+                                <span className="text-xs font-semibold text-content-primary truncate">
+                                  {item.promotionTitle}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-content-muted">
+                                {item.customerEmail || "Cliente anónimo"} ·{" "}
+                                {new Date(item.redeemedAt).toLocaleString("es-ES", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                            <span
+                              className={`text-[11px] font-semibold px-2.5 py-1 rounded-button border self-start sm:self-center shrink-0 ${
+                                item.verified
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}
+                            >
+                              {item.verified ? "✓ Validado en caja" : "⏳ Pendiente"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -852,6 +1068,44 @@ export default function RestaurantDashboard({
                   {promoError}
                 </div>
               )}
+
+              {/* Vista previa en vivo del cupón */}
+              <div className="bg-surface-canvas border border-surface-border rounded-card p-3 space-y-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-content-muted block">
+                  Vista previa en el catálogo
+                </span>
+                <div className="bg-surface-card border border-surface-border rounded-card overflow-hidden flex items-center gap-3 p-2.5 shadow-subtle">
+                  <img
+                    src={promoForm.imageUrl || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop"}
+                    alt="Vista previa"
+                    className="w-20 h-16 rounded-button object-cover shrink-0 bg-surface-muted"
+                  />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-semibold text-brand-700 uppercase truncate">
+                        {restaurantData?.businessName || "Tu restaurante"}
+                      </span>
+                      <span className="shrink-0 bg-brand-50 text-brand-700 border border-brand-200 text-[10px] font-bold px-1.5 py-0.5 rounded-button">
+                        {promoForm.discountType === "PERCENTAGE"
+                          ? `${promoForm.discountValue || 0}% OFF`
+                          : `$${Number(promoForm.discountValue || 0).toLocaleString()}`}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-content-primary truncate">
+                      {promoForm.title || "Título de tu oferta"}
+                    </p>
+                    <div className="flex items-center justify-between text-[10px] text-content-muted">
+                      <span>
+                        {promoForm.minPurchase ? `Mín. $${Number(promoForm.minPurchase).toLocaleString()}` : "Sin mínimo"}
+                        {promoForm.startTime && promoForm.endTime ? ` · ${promoForm.startTime}–${promoForm.endTime}` : ""}
+                      </span>
+                      <span className="font-mono font-semibold text-content-primary bg-surface-muted border border-surface-border px-1.5 py-0.5 rounded">
+                        {promoForm.code || "CODIGO"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <form onSubmit={handleSavePromo} className="space-y-4">
                 <Field label="Título del cupón / oferta *">
