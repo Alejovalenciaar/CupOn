@@ -14,7 +14,23 @@ import {
 } from "@/api/promotionServices";
 import { ImageUploader } from "@/components/ImageUpLoader";
 import RestaurantMap from "@/components/RestaurantMap";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import RedemptionValidatorTab from "./components/RedemptionValidatorTab";
 import { downloadCsv } from "@/utils/csv";
+import {
+  IconChart,
+  IconCheckCircle,
+  IconCopy,
+  IconDownload,
+  IconEdit,
+  IconEye,
+  IconMenu,
+  IconShare,
+  IconSparkles,
+  IconStore,
+  IconTicket,
+  IconTrash,
+} from "@/components/Icons";
 
 interface RestaurantDashboardProps {
   currentUser?: { email: string; role: string };
@@ -58,30 +74,34 @@ const getPromoStatusMeta = (status: Promotion["status"]) => {
     case "ACTIVE":
       return {
         label: "Activa",
-        cardLabel: "● Activa",
+        cardLabel: "Activa",
+        dot: "bg-emerald-500",
         listCls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-        cardCls: "bg-emerald-600 text-white",
+        cardCls: "bg-surface-card/95 backdrop-blur-sm text-emerald-800 border border-emerald-200",
       };
     case "DRAFT":
       return {
         label: "Borrador",
-        cardLabel: "📝 Borrador",
-        listCls: "bg-slate-100 text-slate-700 border border-slate-200",
-        cardCls: "bg-slate-700 text-white",
+        cardLabel: "Borrador",
+        dot: "bg-stone-400",
+        listCls: "bg-stone-100 text-stone-700 border border-stone-200",
+        cardCls: "bg-surface-card/95 backdrop-blur-sm text-stone-700 border border-stone-200",
       };
     case "EXPIRED":
       return {
         label: "Expirada",
-        cardLabel: "⌛ Expirada",
+        cardLabel: "Expirada",
+        dot: "bg-red-500",
         listCls: "bg-red-50 text-red-700 border border-red-200",
-        cardCls: "bg-red-600 text-white",
+        cardCls: "bg-surface-card/95 backdrop-blur-sm text-red-800 border border-red-200",
       };
     default:
       return {
         label: "Pausada",
-        cardLabel: "⏸ Pausada",
-        listCls: "bg-surface-muted text-content-muted border border-surface-border",
-        cardCls: "bg-surface-muted text-content-secondary border border-surface-border",
+        cardLabel: "Pausada",
+        dot: "bg-amber-500",
+        listCls: "bg-amber-50 text-amber-700 border border-amber-200",
+        cardCls: "bg-surface-card/95 backdrop-blur-sm text-amber-800 border border-amber-200",
       };
   }
 };
@@ -120,6 +140,7 @@ export default function RestaurantDashboard({
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [copiedPromoId, setCopiedPromoId] = useState<string | null>(null);
+  const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promoForm, setPromoForm] = useState<CreatePromotionRequest>({
     title: "", description: "", code: "", discountType: "PERCENTAGE",
@@ -352,10 +373,16 @@ export default function RestaurantDashboard({
     }
   };
 
-  const handleDeletePromo = async (promoId: string) => {
-    if (!window.confirm("¿Eliminar este cupón permanentemente?")) return;
+  const handleDeletePromo = (promoId: string) => {
+    setDeletingPromoId(promoId);
+  };
+
+  const confirmDeletePromo = async () => {
+    if (!deletingPromoId) return;
+    const targetId = deletingPromoId;
+    setDeletingPromoId(null);
     try {
-      await deletePromotion(promoId);
+      await deletePromotion(targetId);
       await refreshPromotions();
       onCatalogNeedsRefresh?.();
     } catch (err: any) {
@@ -382,11 +409,11 @@ export default function RestaurantDashboard({
   const viewConversion = totalViews > 0 ? Math.round((totalRedemptions / totalViews) * 100) : 0;
   const bestPromo = [...promotions].sort((a, b) => (b.currentRedemptions || 0) - (a.currentRedemptions || 0))[0];
 
-  const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
-    { id: "metrics", label: "Métricas y rendimiento", icon: "📊" },
-    { id: "promotions", label: `Mis cupones (${promotions.length})`, icon: "🎟️" },
-    { id: "redemptions", label: `Validar canje (${redemptions.length})`, icon: "✅" },
-    { id: "profile", label: "Perfil del local", icon: "🏢" },
+  const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "metrics", label: "Métricas y rendimiento", icon: <IconChart size={16} /> },
+    { id: "promotions", label: `Mis cupones (${promotions.length})`, icon: <IconTicket size={16} /> },
+    { id: "redemptions", label: `Validar canje (${redemptions.length})`, icon: <IconCheckCircle size={16} /> },
+    { id: "profile", label: "Perfil del local", icon: <IconStore size={16} /> },
   ];
 
   const isApproved = restaurantData?.approvalStatus === "APPROVED";
@@ -404,12 +431,14 @@ export default function RestaurantDashboard({
               className="md:hidden p-1 rounded-button text-content-secondary hover:bg-surface-muted"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              ☰
+              <IconMenu size={18} />
             </button>
             {restaurantData?.logoUrl ? (
               <img src={restaurantData.logoUrl} alt="Logo" className="w-8 h-8 rounded-button object-cover border border-surface-border" />
             ) : (
-              <div className="w-8 h-8 rounded-button bg-brand-100 border border-brand-200 flex items-center justify-center text-base">🏪</div>
+              <div className="w-8 h-8 rounded-button bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-700">
+                <IconStore size={15} />
+              </div>
             )}
             <div className="hidden sm:block">
               <span className="font-semibold text-sm text-content-primary">
@@ -547,9 +576,10 @@ export default function RestaurantDashboard({
                         type="button"
                         onClick={handleExportRestaurantCsv}
                         disabled={promotions.length === 0}
-                        className="bg-white hover:bg-surface-muted disabled:opacity-50 text-content-secondary border border-surface-border text-xs font-medium px-3 py-2 rounded-button transition-colors shadow-subtle"
+                        className="inline-flex items-center gap-1.5 bg-white hover:bg-surface-muted disabled:opacity-50 text-content-secondary border border-surface-border text-xs font-medium px-3 py-2 rounded-button transition-colors shadow-subtle"
                       >
-                        ⬇ Exportar CSV
+                        <IconDownload size={14} />
+                        <span>Exportar CSV</span>
                       </button>
                       <button
                         type="button"
@@ -565,17 +595,16 @@ export default function RestaurantDashboard({
                   {/* KPIs de estado (GET /promotions/mine/stats) */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: "Activas", value: stats?.active ?? "—", sub: "visibles en el catálogo", icon: "🟢", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-                      { label: "Pausadas", value: stats?.paused ?? "—", sub: "ocultas temporalmente", icon: "⏸", color: "text-amber-600 bg-amber-50 border-amber-100" },
-                      { label: "Expiradas", value: stats?.expired ?? "—", sub: "fecha de fin vencida", icon: "⌛", color: "text-slate-600 bg-slate-50 border-slate-200" },
-                      { label: "Vistas totales", value: stats?.totalViews ?? "—", sub: `${viewConversion}% terminan en canje`, icon: "👁️", color: "text-sky-600 bg-sky-50 border-sky-100" },
+                      { label: "Activas", value: stats?.active ?? "—", sub: "visibles en el catálogo" },
+                      { label: "Pausadas", value: stats?.paused ?? "—", sub: "ocultas temporalmente" },
+                      { label: "Expiradas", value: stats?.expired ?? "—", sub: "fecha de fin vencida" },
+                      { label: "Vistas totales", value: stats?.totalViews ?? "—", sub: `${viewConversion}% terminan en canje` },
                     ].map((kpi) => (
                       <div key={kpi.label} className="bg-surface-card border border-surface-border rounded-card p-4 shadow-subtle">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{kpi.label}</span>
-                          <span className={`text-base p-1.5 rounded-button border ${kpi.color}`}>{kpi.icon}</span>
-                        </div>
-                        <div className="text-2xl font-bold text-content-primary">{kpi.value}</div>
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-2">
+                          {kpi.label}
+                        </span>
+                        <div className="text-2xl font-bold tracking-tight text-content-primary tabular-nums">{kpi.value}</div>
                         <p className="text-[11px] text-content-muted mt-0.5">{kpi.sub}</p>
                       </div>
                     ))}
@@ -584,23 +613,20 @@ export default function RestaurantDashboard({
                   {/* KPIs de rendimiento */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {[
-                      { label: "Canjes totales", value: totalRedemptions, sub: "clientes que redimieron", icon: "👥", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-                      { label: "Tasa de redención", value: `${redemptionRate}%`, sub: "sobre el límite total", icon: "📈", color: "text-amber-600 bg-amber-50 border-amber-100" },
+                      { label: "Canjes totales", value: totalRedemptions, sub: "clientes que redimieron" },
+                      { label: "Tasa de redención", value: `${redemptionRate}%`, sub: "sobre el límite total" },
                       {
                         label: "Top cupón",
                         value: bestPromo ? bestPromo.code : "—",
                         sub: bestPromo ? `${bestPromo.currentRedemptions} canjes` : "Crea tu primera oferta",
-                        icon: "🏆",
-                        color: "text-brand-600 bg-brand-50 border-brand-100",
                         mono: true,
                       },
                     ].map((kpi) => (
                       <div key={kpi.label} className="bg-surface-card border border-surface-border rounded-card p-4 shadow-subtle">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">{kpi.label}</span>
-                          <span className={`text-base p-1.5 rounded-button border ${kpi.color}`}>{kpi.icon}</span>
-                        </div>
-                        <div className={`text-2xl font-bold text-content-primary truncate ${(kpi as any).mono ? "font-mono text-lg" : ""}`}>
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-2">
+                          {kpi.label}
+                        </span>
+                        <div className={`text-2xl font-bold tracking-tight text-content-primary truncate tabular-nums ${(kpi as any).mono ? "font-mono text-lg" : ""}`}>
                           {kpi.value}
                         </div>
                         <p className="text-[11px] text-content-muted mt-0.5">{kpi.sub}</p>
@@ -631,7 +657,10 @@ export default function RestaurantDashboard({
                                     {getPromoStatusMeta(promo.status).label}
                                   </span>
                                 </div>
-                                <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2">👁️ {promo.viewCount || 0} · {cur}/{max} ({pct}%)</span>
+                                <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2 inline-flex items-center gap-1 tabular-nums">
+                                  <IconEye size={13} className="text-content-muted" />
+                                  <span>{promo.viewCount || 0} · {cur}/{max} ({pct}%)</span>
+                                </span>
                               </div>
                               <div className="h-1.5 bg-surface-muted rounded-full overflow-hidden">
                                 <div
@@ -647,8 +676,10 @@ export default function RestaurantDashboard({
                   </div>
 
                   {/* Tip */}
-                  <div className="bg-brand-50 border border-brand-100 rounded-card p-5 flex items-start gap-4">
-                    <span className="text-2xl flex-shrink-0">💡</span>
+                  <div className="bg-brand-50 border border-brand-100 rounded-card p-5 flex items-start gap-3.5">
+                    <div className="w-8 h-8 rounded-button bg-white border border-brand-200 text-brand-600 flex items-center justify-center shrink-0">
+                      <IconSparkles size={16} />
+                    </div>
                     <div>
                       <p className="text-sm font-semibold text-content-primary">Recomendación para aumentar tus canjes</p>
                       <p className="text-xs text-content-secondary mt-1 leading-relaxed">
@@ -679,7 +710,9 @@ export default function RestaurantDashboard({
 
                   {promotions.length === 0 ? (
                     <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center">
-                      <span className="text-3xl block mb-2">🎟️</span>
+                      <div className="w-10 h-10 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto mb-3 text-content-secondary">
+                        <IconTicket size={18} />
+                      </div>
                       <h3 className="font-semibold text-content-primary">Aún no tienes cupones</h3>
                       <p className="text-xs text-content-secondary mt-1 mb-4">Crea tu primera oferta para que los clientes te descubran.</p>
                       <button
@@ -701,7 +734,8 @@ export default function RestaurantDashboard({
                               alt={promo.title}
                               className="w-full h-36 object-cover"
                             />
-                            <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-button ${getPromoStatusMeta(promo.status).cardCls}`}>
+                            <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-button shadow-subtle ${getPromoStatusMeta(promo.status).cardCls}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${getPromoStatusMeta(promo.status).dot}`} />
                               {getPromoStatusMeta(promo.status).cardLabel}
                             </span>
                             <span className="absolute top-2 right-2 text-[10px] font-bold bg-brand-600 text-white px-2 py-0.5 rounded-button">
@@ -740,35 +774,35 @@ export default function RestaurantDashboard({
                             <button
                               type="button"
                               onClick={() => openEditPromo(promo)}
-                              className="p-1.5 text-sm rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
+                              className="p-2 text-content-secondary hover:text-content-primary rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
                               title="Editar"
                             >
-                              ✏️
+                              <IconEdit size={14} />
                             </button>
                             <button
                               type="button"
                               onClick={() => openDuplicatePromo(promo)}
                               disabled={!isApproved}
-                              className="p-1.5 text-sm rounded-button border border-surface-border bg-white hover:bg-surface-muted disabled:opacity-50 transition-colors"
+                              className="p-2 text-content-secondary hover:text-content-primary rounded-button border border-surface-border bg-white hover:bg-surface-muted disabled:opacity-50 transition-colors"
                               title="Duplicar cupón"
                             >
-                              📋
+                              <IconCopy size={14} />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSharePromo(promo)}
-                              className="p-1.5 text-sm rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
+                              className="p-2 text-content-secondary hover:text-content-primary rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
                               title="Compartir enlace"
                             >
-                              {copiedPromoId === promo.id ? "✓" : "↗️"}
+                              {copiedPromoId === promo.id ? <IconCheckCircle size={14} className="text-emerald-600" /> : <IconShare size={14} />}
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeletePromo(promo.id)}
-                              className="p-1.5 text-sm rounded-button border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                              className="p-2 rounded-button border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
                               title="Eliminar"
                             >
-                              🗑️
+                              <IconTrash size={14} />
                             </button>
                           </div>
                         </div>
@@ -780,89 +814,14 @@ export default function RestaurantDashboard({
 
               {/* ── VALIDAR CANJE EN CAJA ────────────────────────────────── */}
               {activeTab === "redemptions" && (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-xl font-bold text-content-primary">Validar canje en caja</h1>
-                    <p className="text-xs text-content-secondary mt-0.5">
-                      Ingresa el código único que presenta el cliente (ej. CUP-A7X9K2) para confirmar el uso del cupón
-                    </p>
-                  </div>
-
-                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle max-w-xl">
-                    <form onSubmit={handleVerifyRedemption} className="flex flex-col sm:flex-row gap-3">
-                      <input
-                        type="text"
-                        required
-                        placeholder="CUP-XXXXXX"
-                        value={verifyCodeInput}
-                        onChange={(e) => setVerifyCodeInput(e.target.value.toUpperCase())}
-                        className={`${inputCls} font-mono tracking-widest uppercase flex-1`}
-                      />
-                      <button
-                        type="submit"
-                        disabled={verifyingCode}
-                        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold px-5 py-2.5 rounded-button transition-colors shadow-subtle whitespace-nowrap"
-                      >
-                        {verifyingCode ? "Validando..." : "Validar código"}
-                      </button>
-                    </form>
-                    {verifyFeedback && (
-                      <div
-                        className={`mt-3 px-3 py-2.5 rounded-button text-xs border ${
-                          verifyFeedback.type === "success"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                            : "bg-red-50 border-red-200 text-red-700"
-                        }`}
-                      >
-                        {verifyFeedback.msg}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-surface-card border border-surface-border rounded-card p-5 shadow-subtle">
-                    <h2 className="text-sm font-semibold text-content-primary mb-4">Historial de canjes recientes</h2>
-                    {redemptions.length === 0 ? (
-                      <p className="text-xs text-content-muted text-center py-6">
-                        Aún no hay canjes registrados para tus promociones.
-                      </p>
-                    ) : (
-                      <div className="divide-y divide-surface-border">
-                        {redemptions.map((item) => (
-                          <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-mono text-xs font-bold bg-surface-muted border border-surface-border px-2 py-0.5 rounded-button text-content-primary">
-                                  {item.verificationCode}
-                                </span>
-                                <span className="text-xs font-semibold text-content-primary truncate">
-                                  {item.promotionTitle}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-content-muted">
-                                {item.customerEmail || "Cliente anónimo"} ·{" "}
-                                {new Date(item.redeemedAt).toLocaleString("es-ES", {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
-                            <span
-                              className={`text-[11px] font-semibold px-2.5 py-1 rounded-button border self-start sm:self-center shrink-0 ${
-                                item.verified
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-amber-50 text-amber-700 border-amber-200"
-                              }`}
-                            >
-                              {item.verified ? "✓ Validado en caja" : "⏳ Pendiente"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <RedemptionValidatorTab
+                  redemptions={redemptions}
+                  verifyCodeInput={verifyCodeInput}
+                  verifyingCode={verifyingCode}
+                  verifyFeedback={verifyFeedback}
+                  onChangeCode={setVerifyCodeInput}
+                  onSubmitVerify={handleVerifyRedemption}
+                />
               )}
 
               {/* ── PERFIL DEL LOCAL ─────────────────────────────────────── */}
@@ -880,7 +839,7 @@ export default function RestaurantDashboard({
                         ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                         : "bg-amber-50 border-amber-200 text-amber-800"
                     }`}>
-                      <span className="text-lg">{isApproved ? "🟢" : "🟡"}</span>
+                      <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${isApproved ? "bg-emerald-500" : "bg-amber-500"}`} />
                       <div>
                         <p className="font-semibold">{isApproved ? "Aprobado y visible en el catálogo" : "Pendiente de validación"}</p>
                         <p className="opacity-75 mt-0.5">
@@ -1306,6 +1265,16 @@ export default function RestaurantDashboard({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deletingPromoId)}
+        title="Eliminar cupón permanentemente"
+        description="Esta oferta dejará de estar disponible en el catálogo y no podrá recuperarse."
+        confirmLabel="Eliminar cupón"
+        variant="danger"
+        onConfirm={confirmDeletePromo}
+        onCancel={() => setDeletingPromoId(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getMyRedemptions } from "@/api/promotionServices";
+import { IconArrowLeft, IconCheckCircle, IconClock, IconTicket } from "@/components/Icons";
+import VerificationQrPass from "@/components/VerificationQrPass";
 import type { RedemptionHistoryItem } from "@/types";
 
 export default function RedemptionsPage() {
@@ -34,9 +36,10 @@ export default function RedemptionsPage() {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="text-xs font-medium text-content-secondary hover:text-brand-600 px-3 py-1.5 rounded-button border border-surface-border hover:bg-surface-muted transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-content-secondary hover:text-brand-600 px-3 py-1.5 rounded-button border border-surface-border hover:bg-surface-muted transition-colors"
           >
-            ← Volver al catálogo
+            <IconArrowLeft size={13} />
+            <span>Volver al catálogo</span>
           </button>
         </div>
       </header>
@@ -63,7 +66,9 @@ export default function RedemptionsPage() {
 
         {!loading && !error && items.length === 0 && (
           <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center">
-            <span className="text-3xl block mb-2">🎟️</span>
+            <div className="w-11 h-11 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto mb-3 text-content-secondary">
+              <IconTicket size={18} />
+            </div>
             <h2 className="font-semibold text-content-primary text-base">
               Aún no has canjeado ningún cupón
             </h2>
@@ -92,13 +97,14 @@ export default function RedemptionsPage() {
                       {item.restaurantName}
                     </span>
                     <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-button border shrink-0 ${
+                      className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-button border shrink-0 ${
                         item.verified
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }`}
                     >
-                      {item.verified ? "✓ Validado en local" : "⏳ Pendiente en caja"}
+                      {item.verified ? <IconCheckCircle size={12} /> : <IconClock size={12} />}
+                      <span>{item.verified ? "Validado en local" : "Pendiente en caja"}</span>
                     </span>
                   </div>
                   <h3 className="font-semibold text-sm text-content-primary">{item.promotionTitle}</h3>
@@ -118,19 +124,22 @@ export default function RedemptionsPage() {
                   </p>
                 </div>
 
-                <div className="bg-brand-50/60 border border-dashed border-brand-300 rounded-button p-3 flex items-center justify-between gap-3">
-                  <div>
-                    <span className="block text-[10px] uppercase tracking-wider font-semibold text-brand-700">
-                      Código de verificación
-                    </span>
-                    <span className="font-mono text-base font-bold tracking-widest text-brand-800">
-                      {item.verificationCode}
-                    </span>
+                <div className="bg-surface-canvas border border-dashed border-surface-border rounded-card p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <VerificationQrPass verificationCode={item.verificationCode} size={64} />
+                    <div className="min-w-0">
+                      <span className="block text-[10px] uppercase tracking-wider font-semibold text-content-muted">
+                        Pase de verificación
+                      </span>
+                      <span className="font-mono text-base font-bold tracking-widest text-content-primary block truncate">
+                        {item.verificationCode}
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleCopy(item.id, item.verificationCode)}
-                    className="text-xs font-medium bg-white hover:bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-button transition-colors"
+                    className="shrink-0 text-xs font-medium bg-white hover:bg-surface-muted text-content-primary border border-surface-border px-3 py-1.5 rounded-button transition-colors"
                   >
                     {copiedId === item.id ? "Copiado ✓" : "Copiar"}
                   </button>

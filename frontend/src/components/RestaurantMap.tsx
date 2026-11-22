@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { IconMapPin } from './Icons';
 
 declare global {
   interface Window {
@@ -148,9 +149,9 @@ export default function RestaurantMap({
               type="button"
               onClick={handleUseMyLocation}
               disabled={locating}
-              className="shrink-0 inline-flex items-center gap-1 bg-white hover:bg-surface-muted text-content-primary border border-surface-border px-2.5 py-1 rounded-button font-medium transition-colors shadow-subtle"
+              className="shrink-0 inline-flex items-center gap-1.5 bg-white hover:bg-surface-muted text-content-primary border border-surface-border px-2.5 py-1 rounded-button font-medium transition-colors shadow-subtle"
             >
-              <span>📍</span>
+              <IconMapPin size={13} />
               <span>{locating ? 'Ubicando...' : 'Usar mi ubicación'}</span>
             </button>
           </>

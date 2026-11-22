@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { uploadFile, UploadFolder } from "../api/fileService";
+import { IconCamera } from "./Icons";
 
 interface ImageUploaderProps {
     value?: string;
@@ -129,8 +130,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                             <p className="text-xs text-content-secondary font-medium">Subiendo a Cloudinary...</p>
                         </div>
                     ) : (
-                        <div className="space-y-1">
-                            <div className="text-2xl mb-1">📷</div>
+                        <div className="space-y-1.5">
+                            <div className="w-9 h-9 rounded-full bg-surface-card border border-surface-border flex items-center justify-center mx-auto text-content-secondary">
+                                <IconCamera size={17} />
+                            </div>
                             <p className="text-sm font-medium text-content-primary">
                                 Haz clic para subir un archivo
                             </p>

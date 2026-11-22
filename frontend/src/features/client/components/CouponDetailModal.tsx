@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Promotion, RedemptionResponse } from '@/types';
 import { redeemPromotion, registerPromotionView } from '@/api/promotionServices';
+import { IconCheckCircle, IconHeart, IconLink } from '@/components/Icons';
+import VerificationQrPass from '@/components/VerificationQrPass';
 import ActiveDaysPills from './ActiveDaysPills';
 
 const shareButtonClass =
@@ -51,6 +53,20 @@ export default function CouponDetailModal({
     registerPromotionView(promo.id);
   }, [promo.id]);
 
+  // Bloquear el scroll de la página trasera mientras el modal está abierto + cerrar con Escape
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
   const days = (promo as any).daysOfWeek || [];
 
   const handleCopy = (code: string) => {
@@ -99,14 +115,14 @@ export default function CouponDetailModal({
       role="dialog"
       aria-modal="true"
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface-card border border-surface-border rounded-card shadow-hover w-full max-w-lg overflow-hidden flex flex-col my-8 animate-in fade-in zoom-in-95 duration-150"
+        className="bg-surface-card border border-surface-border rounded-card shadow-hover w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
       >
-        {/* Imagen del cupón */}
-        <div className="relative aspect-[16/9] w-full bg-surface-muted overflow-hidden">
+        {/* Imagen del cupón compacta y fija en la cabecera */}
+        <div className="relative h-40 sm:h-44 w-full bg-surface-muted overflow-hidden shrink-0">
           <img
             src={
               promo.imageUrl ||
@@ -126,7 +142,7 @@ export default function CouponDetailModal({
           </button>
 
           <div className="absolute bottom-3 start-3">
-            <span className="bg-brand-600 text-white text-xs font-semibold px-2.5 py-1 rounded-button shadow-subtle">
+            <span className="bg-content-primary/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-button shadow-subtle tabular-nums">
               {promo.discountType === 'PERCENTAGE'
                 ? `${promo.discountValue}% DE DESCUENTO`
                 : `$${Number(promo.discountValue).toLocaleString()} DE DESCUENTO`}
@@ -134,8 +150,8 @@ export default function CouponDetailModal({
           </div>
         </div>
 
-        {/* Cuerpo del Modal */}
-        <div className="p-6 flex flex-col space-y-4">
+        {/* Cuerpo del Modal con scroll interno contenido */}
+        <div className="p-5 flex flex-col space-y-3.5 overflow-y-auto overscroll-contain">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-xs font-semibold text-brand-700 uppercase tracking-wide">
@@ -143,19 +159,19 @@ export default function CouponDetailModal({
               </span>
               <ActiveDaysPills days={days} />
             </div>
-            <h2 className="text-lg font-bold text-content-primary tracking-tight">
+            <h2 className="text-lg font-bold text-content-primary tracking-tight leading-snug">
               {promo.title}
             </h2>
-            <p className="text-xs text-content-secondary mt-1">
+            <p className="text-xs text-content-secondary mt-1 leading-relaxed">
               {promo.description || 'Presenta este cupón en el establecimiento para disfrutar del descuento.'}
             </p>
           </div>
 
           {/* Tabla de condiciones y vigencia */}
-          <div className="bg-surface-muted border border-surface-border rounded-card p-3 space-y-2 text-xs">
+          <div className="bg-surface-muted border border-surface-border rounded-card p-3 space-y-1.5 text-xs">
             <div className="flex justify-between text-content-secondary">
               <span>Compra mínima:</span>
-              <span className="font-semibold text-content-primary">
+              <span className="font-semibold text-content-primary tabular-nums">
                 {Number(promo.minPurchase) > 0
                   ? `$${Number(promo.minPurchase).toLocaleString()} COP`
                   : 'Sin consumo mínimo'}
@@ -173,70 +189,89 @@ export default function CouponDetailModal({
             </div>
             <div className="flex justify-between text-content-secondary">
               <span>Disponibilidad:</span>
-              <span className="font-semibold text-content-primary">
+              <span className="font-semibold text-content-primary tabular-nums">
                 {promo.maxRedemptions > 0
-                  ? `${promo.maxRedemptions - (promo.currentRedemptions || 0)} cupones restantes`
+                  ? `${Math.max(0, promo.maxRedemptions - (promo.currentRedemptions || 0))} cupones restantes`
                   : 'Ilimitada'}
               </span>
             </div>
           </div>
 
-          {/* Cuadro de Código de Canje */}
-          <div className="border border-dashed border-brand-500 bg-brand-50/50 rounded-card p-4 text-center">
-            <span className="text-xs text-brand-700 font-medium block mb-1">
-              Código de canje
-            </span>
-            <div className="font-mono text-xl font-bold tracking-widest text-brand-700 mb-2">
-              {promo.code}
-            </div>
-            <button
-              type="button"
-              onClick={() => handleCopy(promo.code)}
-              className="inline-flex items-center gap-1.5 bg-white border border-brand-200 text-brand-700 text-xs font-semibold px-3 py-1.5 rounded-button shadow-subtle hover:bg-brand-50 transition-colors"
-            >
-              <span>{copiedCode ? '¡Copiado al portapapeles! ✓' : 'Copiar código'}</span>
-            </button>
-          </div>
-
-          {/* Canje en vivo */}
-          {!isRedeemable ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-card text-center">
-              Este cupón ya no está disponible para canje.
-            </div>
-          ) : redeemResult ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 text-center text-emerald-800 space-y-2">
-              <span className="text-xl block">✅</span>
-              <p className="text-xs font-bold">¡Cupón canjeado con éxito!</p>
+          {/* Código o Pase QR unificado (evita duplicar altura al canjear) */}
+          {redeemResult ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-card p-3.5 text-emerald-800 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <IconCheckCircle size={15} className="text-emerald-600" />
+                  <span>¡Cupón canjeado con éxito!</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(redeemResult.verificationCode || redeemResult.code)}
+                  className="text-[11px] font-semibold bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-button transition-colors"
+                >
+                  {copiedCode ? '¡Copiado! ✓' : 'Copiar pase'}
+                </button>
+              </div>
               {redeemResult.verificationCode && (
-                <div className="bg-white border border-emerald-200 rounded-button py-2 px-3 inline-block">
-                  <span className="block text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">
-                    Presenta este código en caja
-                  </span>
-                  <span className="font-mono text-lg font-bold tracking-widest text-emerald-900">
-                    {redeemResult.verificationCode}
-                  </span>
+                <div className="bg-white border border-emerald-200 rounded-card p-3 flex items-center gap-3.5">
+                  <VerificationQrPass verificationCode={redeemResult.verificationCode} size={68} />
+                  <div className="min-w-0">
+                    <span className="block text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">
+                      Pase de verificación en caja
+                    </span>
+                    <span className="font-mono text-lg font-bold tracking-widest text-content-primary block mt-0.5">
+                      {redeemResult.verificationCode}
+                    </span>
+                    <span className="text-[11px] text-content-secondary block mt-0.5">
+                      Cupón: <strong className="font-mono text-content-primary">{redeemResult.code}</strong>
+                    </span>
+                  </div>
                 </div>
               )}
-              <p className="text-[11px] text-emerald-700">
-                Cupón: <strong className="font-mono">{redeemResult.code}</strong>
-              </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {redeemError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-2.5 rounded-button">
-                  {redeemError}
+            <>
+              <div className="border border-dashed border-brand-500 bg-brand-50/50 rounded-card px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] text-brand-700 font-medium block">
+                    Código de canje
+                  </span>
+                  <div className="font-mono text-lg font-bold tracking-widest text-brand-700">
+                    {promo.code}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(promo.code)}
+                  className="shrink-0 inline-flex items-center gap-1.5 bg-white border border-brand-200 text-brand-700 text-xs font-semibold px-3 py-1.5 rounded-button shadow-subtle hover:bg-brand-50 transition-colors"
+                >
+                  <span>{copiedCode ? '¡Copiado! ✓' : 'Copiar código'}</span>
+                </button>
+              </div>
+
+              {!isRedeemable ? (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-card text-center">
+                  Este cupón ya no está disponible para canje.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {redeemError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-2.5 rounded-button">
+                      {redeemError}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRedeem}
+                    disabled={redeemLoading}
+                    className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium px-4 py-2.5 rounded-button text-sm transition-colors shadow-subtle flex items-center justify-center gap-2"
+                  >
+                    {redeemLoading ? 'Validando canje...' : 'Confirmar canje en local'}
+                  </button>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={handleRedeem}
-                disabled={redeemLoading}
-                className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium px-4 py-2.5 rounded-button text-sm transition-colors shadow-subtle flex items-center justify-center gap-2"
-              >
-                {redeemLoading ? 'Validando canje...' : 'Confirmar canje en local'}
-              </button>
-            </div>
+            </>
           )}
 
           {/* Compartir (HU 24 / HU 27) */}
@@ -246,9 +281,10 @@ export default function CouponDetailModal({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={shareButtonClass}
+                className={`${shareButtonClass} gap-1.5`}
               >
-                {copiedShare ? '¡Copiado! ✓' : '🔗 Copiar enlace'}
+                <IconLink size={13} />
+                <span>{copiedShare ? '¡Copiado!' : 'Copiar enlace'}</span>
               </button>
               <a
                 href={whatsappUrl}
@@ -283,9 +319,12 @@ export default function CouponDetailModal({
             <button
               type="button"
               onClick={(e) => onToggleFavorite(promo.id, e)}
-              className="flex-1 bg-white hover:bg-surface-muted text-content-secondary border border-surface-border text-xs font-medium px-4 py-2 rounded-button transition-colors flex items-center justify-center gap-1"
+              className={`flex-1 bg-white hover:bg-surface-muted border border-surface-border text-xs font-medium px-4 py-2 rounded-button transition-colors flex items-center justify-center gap-1.5 ${
+                isFavorite ? 'text-brand-600' : 'text-content-secondary'
+              }`}
             >
-              <span>{isFavorite ? '❤️ Guardado' : '🤍 Guardar'}</span>
+              <IconHeart size={14} filled={isFavorite} />
+              <span>{isFavorite ? 'Guardado' : 'Guardar'}</span>
             </button>
           </div>
         </div>

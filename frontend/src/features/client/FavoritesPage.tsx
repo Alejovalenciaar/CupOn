@@ -5,6 +5,8 @@ import {
   getMyFavoriteRestaurants,
   toggleFavoriteRestaurant,
 } from '@/api/restaurantServices';
+import { useAuth } from '@/context/AuthContext';
+import { IconArrowLeft, IconHeart, IconLock, IconTicket, IconUtensils } from '@/components/Icons';
 import { Promotion, Restaurant } from '@/types';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -18,15 +20,7 @@ interface FavoritesPageProps {
 
 export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
   const navigate = useNavigate();
-
-  const currentUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('cupon_user') || 'null');
-    } catch {
-      return null;
-    }
-  })();
-
+  const { user: currentUser, logout } = useAuth();
   const isClient = currentUser?.role === 'ROLE_CLIENTE';
 
   const [activeTab, setActiveTab] = useState<'cupones' | 'restaurantes'>('cupones');
@@ -46,8 +40,7 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
           setPromotions(promosData.content || []);
           setRestaurants(restData.content || []);
         })
-        .catch((err) => {
-          console.error('Error al cargar favoritos:', err);
+        .catch(() => {
           setError('No se pudieron cargar tus favoritos.');
         })
         .finally(() => setLoading(false));
@@ -63,8 +56,8 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
         await toggleFavorite(id);
       }
       setPromotions((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      console.error('Error al quitar cupón de favoritos:', err);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -75,14 +68,13 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
         await toggleFavoriteRestaurant(id);
       }
       setRestaurants((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      console.error('Error al quitar restaurante de favoritos:', err);
+    } catch {
+      /* ignore */
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('cupon_user');
+    logout();
     navigate('/');
   };
 
@@ -98,22 +90,23 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
         {/* Cabecera y Pestañas */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => (onBack ? onBack() : navigate('/'))}
-                className="text-xs text-content-secondary hover:text-content-primary flex items-center gap-1 font-medium mr-2"
+                className="text-xs text-content-secondary hover:text-content-primary inline-flex items-center gap-1.5 font-medium transition-colors"
               >
-                ← Volver al catálogo
+                <IconArrowLeft size={13} />
+                <span>Volver al catálogo</span>
               </button>
+              <span className="text-surface-border">/</span>
               <h1 className="text-xl font-bold tracking-tight text-content-primary">
                 Mis Favoritos
               </h1>
             </div>
-            <p className="text-xs text-content-secondary mt-0.5">
-              {promotions.length} cupón{promotions.length !== 1 ? 'es' : ''} y{' '}
-              {restaurants.length} restaurante{restaurants.length !== 1 ? 's' : ''} guardado
-              {restaurants.length !== 1 ? 's' : ''}
+            <p className="text-xs text-content-secondary mt-1 tabular-nums">
+              {promotions.length} {promotions.length === 1 ? 'cupón' : 'cupones'} y{' '}
+              {restaurants.length} {restaurants.length === 1 ? 'restaurante guardado' : 'restaurantes guardados'}
             </p>
           </div>
 
@@ -123,14 +116,15 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
                 type="button"
                 id="tab-favoritos-cupones"
                 onClick={() => setActiveTab('cupones')}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-2 ${
                   activeTab === 'cupones'
                     ? 'bg-white text-content-primary shadow-subtle'
                     : 'text-content-secondary hover:text-content-primary'
                 }`}
               >
-                <span>🎟️ Cupones</span>
-                <span className="bg-brand-50 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <IconTicket size={14} className={activeTab === 'cupones' ? 'text-brand-600' : 'text-content-muted'} />
+                <span>Cupones</span>
+                <span className="bg-surface-muted border border-surface-border text-content-primary text-[10px] font-semibold px-1.5 py-0.2 rounded-full tabular-nums">
                   {promotions.length}
                 </span>
               </button>
@@ -139,14 +133,15 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
                 type="button"
                 id="tab-favoritos-restaurantes"
                 onClick={() => setActiveTab('restaurantes')}
-                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-button transition-colors flex items-center gap-2 ${
                   activeTab === 'restaurantes'
                     ? 'bg-white text-content-primary shadow-subtle'
                     : 'text-content-secondary hover:text-content-primary'
                 }`}
               >
-                <span>🍽️ Restaurantes</span>
-                <span className="bg-brand-50 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <IconUtensils size={14} className={activeTab === 'restaurantes' ? 'text-brand-600' : 'text-content-muted'} />
+                <span>Restaurantes</span>
+                <span className="bg-surface-muted border border-surface-border text-content-primary text-[10px] font-semibold px-1.5 py-0.2 rounded-full tabular-nums">
                   {restaurants.length}
                 </span>
               </button>
@@ -157,12 +152,14 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
         {/* Estado no autenticado */}
         {!isClient && (
           <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
-            <span className="text-3xl block">🔒</span>
+            <div className="w-11 h-11 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto text-content-secondary">
+              <IconLock size={18} />
+            </div>
             <h2 className="text-base font-semibold text-content-primary">
               Inicia sesión para sincronizar tus favoritos
             </h2>
-            <p className="text-xs text-content-secondary">
-              Guarda tus cupones y restaurantes preferidos y accede a ellos desde cualquier dispositivo en todo momento.
+            <p className="text-xs text-content-secondary leading-relaxed">
+              Guarda tus cupones y restaurantes preferidos y accede a ellos desde cualquier dispositivo.
             </p>
             <div className="pt-2">
               <button
@@ -184,9 +181,9 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
                 key={i}
                 className="bg-surface-card border border-surface-border rounded-card p-4 animate-pulse space-y-3"
               >
-                <div className="aspect-[16/9] bg-surface-muted rounded-button w-full"></div>
-                <div className="h-4 bg-surface-muted rounded w-3/4"></div>
-                <div className="h-3 bg-surface-muted rounded w-full"></div>
+                <div className="aspect-[16/9] bg-surface-muted rounded-button w-full" />
+                <div className="h-4 bg-surface-muted rounded w-3/4" />
+                <div className="h-3 bg-surface-muted rounded w-full" />
               </div>
             ))}
           </div>
@@ -204,12 +201,14 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
           <>
             {promotions.length === 0 ? (
               <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
-                <span className="text-3xl block">🤍</span>
+                <div className="w-11 h-11 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto text-content-secondary">
+                  <IconHeart size={18} />
+                </div>
                 <h2 className="text-base font-semibold text-content-primary">
                   No tienes cupones guardados
                 </h2>
-                <p className="text-xs text-content-secondary">
-                  Explora las opciones culinarias de la semana y presiona el ❤️ en tus preferidas.
+                <p className="text-xs text-content-secondary leading-relaxed">
+                  Explora las opciones culinarias de la semana y marca el icono de favorito en tus preferidas.
                 </p>
                 <div className="pt-2">
                   <button
@@ -242,12 +241,14 @@ export default function FavoritesPage({ onBack }: FavoritesPageProps = {}) {
           <>
             {restaurants.length === 0 ? (
               <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-md mx-auto space-y-3">
-                <span className="text-3xl block">🍽️</span>
+                <div className="w-11 h-11 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto text-content-secondary">
+                  <IconUtensils size={18} />
+                </div>
                 <h2 className="text-base font-semibold text-content-primary">
                   No tienes restaurantes guardados
                 </h2>
-                <p className="text-xs text-content-secondary">
-                  Guarda tus establecimientos aliados favoritos para encontrar sus ofertas más rápido.
+                <p className="text-xs text-content-secondary leading-relaxed">
+                  Guarda tus establecimientos aliados favoritos para consultar su perfil y sus ofertas más rápido.
                 </p>
                 <div className="pt-2">
                   <button

@@ -52,12 +52,12 @@ export default function RegisterClientPage() {
         <div className="bg-surface-card py-8 px-6 sm:px-10 border border-surface-border rounded-card shadow-subtle">
           {success && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-button mb-4">
-              ✅ {success}
+              {success}
             </div>
           )}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-button mb-4">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 

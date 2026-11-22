@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyProfile, updateMyProfile } from "@/api/userServices";
+import { IconArrowLeft, IconUser } from "@/components/Icons";
 import { UserProfileResponse, UpdateUserRequest } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -113,9 +114,10 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="text-xs text-content-secondary hover:text-content-primary flex items-center gap-1 font-medium"
+              className="text-xs text-content-secondary hover:text-content-primary inline-flex items-center gap-1.5 font-medium"
             >
-              ← Volver al catálogo
+              <IconArrowLeft size={13} />
+              <span>Volver al catálogo</span>
             </button>
             <span className="text-surface-border">/</span>
             <h1 className="text-xl font-bold tracking-tight text-content-primary">Mi Perfil</h1>
@@ -152,7 +154,7 @@ export default function ProfilePage() {
             {/* Header del perfil */}
             <div className="flex items-center gap-4 pb-6 border-b border-surface-border">
               <div className="w-16 h-16 rounded-full bg-brand-100 border border-brand-200 flex items-center justify-center text-2xl font-bold text-brand-700">
-                {profile?.firstName ? profile.firstName.charAt(0).toUpperCase() : "👤"}
+                {profile?.firstName ? profile.firstName.charAt(0).toUpperCase() : <IconUser size={24} />}
               </div>
               <div>
                 <h2 className="text-lg font-bold text-content-primary">

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getRestaurantById, toggleFavoriteRestaurant, getMyFavoriteRestaurants } from "@/api/restaurantServices";
 import { getPromotions, toggleFavorite, getMyFavorites } from "@/api/promotionServices";
 import { useAuth } from "@/context/AuthContext";
+import { IconArrowLeft, IconHeart, IconMapPin, IconPhone } from "@/components/Icons";
 import type { Promotion, Restaurant } from "@/types";
 import RestaurantMap from "@/components/RestaurantMap";
 import CouponCard from "./components/CouponCard";
@@ -104,7 +105,7 @@ export default function RestaurantDetailPage() {
             onClick={() => navigate("/")}
             className="text-xs font-medium text-content-secondary hover:text-brand-600 inline-flex items-center gap-1.5 transition-colors"
           >
-            <span>←</span>
+            <IconArrowLeft size={13} />
             <span>Volver al catálogo</span>
           </button>
         </div>
@@ -167,9 +168,11 @@ export default function RestaurantDetailPage() {
                       <button
                         type="button"
                         onClick={handleToggleFavoriteRestaurant}
-                        className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors"
+                        className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-button border border-surface-border bg-white hover:bg-surface-muted transition-colors ${
+                          isFavRestaurant ? "text-brand-600" : "text-content-secondary"
+                        }`}
                       >
-                        <span>{isFavRestaurant ? "❤️" : "🤍"}</span>
+                        <IconHeart size={14} filled={isFavRestaurant} />
                         <span>{isFavRestaurant ? "Guardado" : "Guardar"}</span>
                       </button>
                     </div>
@@ -181,12 +184,12 @@ export default function RestaurantDetailPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-xs text-content-secondary">
                       <div className="bg-surface-muted border border-surface-border rounded-button px-3 py-2 flex items-center gap-2">
-                        <span>📍</span>
+                        <IconMapPin size={14} className="text-content-muted" />
                         <span className="truncate">{restaurant.address}</span>
                       </div>
                       {restaurant.phoneNumber && (
-                        <div className="bg-surface-muted border border-surface-border rounded-button px-3 py-2 flex items-center gap-2">
-                          <span>📞</span>
+                        <div className="bg-surface-muted border border-surface-border rounded-button px-3 py-2 flex items-center gap-2 tabular-nums">
+                          <IconPhone size={14} className="text-content-muted" />
                           <span className="truncate">{restaurant.phoneNumber}</span>
                         </div>
                       )}

@@ -6,6 +6,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['"Fraunces"', 'Georgia', 'serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
@@ -25,15 +26,47 @@ export default {
           700: '#B45309',
         },
         surface: {
-          canvas: '#FAF9F6', // Fondo general hueso/arena mate (no blanco cegador)
+          canvas: '#FAF8F5', // Fondo hueso cálido editorial
           card: '#FFFFFF',
-          muted: '#F1F5F9',
-          border: '#E2E8F0',
+          muted: '#F3F1EC',  // Gris piedra cálido (Stone) en lugar de azulado frío
+          border: '#E6E2DA',
         },
         content: {
-          primary: '#0F172A',   // Carbón profundo para legibilidad y solidez
-          secondary: '#475569', // Texto complementario legible
-          muted: '#94A3B8',
+          primary: '#1C1917',   // Carbón cálido (Stone 900)
+          secondary: '#57534E', // Piedra media (Stone 600)
+          muted: '#8C857B',
+        },
+        // Tonos semánticos editoriales (Salvia botánico, Burdeos/Vino y Ocre dorado)
+        // en lugar de los colores semáforo saturados por defecto
+        emerald: {
+          50: '#F3F6F4',
+          100: '#E3EBE5',
+          200: '#C5D6CA',
+          500: '#4A7859',
+          600: '#386146',
+          700: '#2B4C36',
+          800: '#213B2A',
+          900: '#182B1F',
+        },
+        red: {
+          50: '#FAF3F2',
+          100: '#F3E3E1',
+          200: '#E4C5C1',
+          500: '#B5483A',
+          600: '#99392C',
+          700: '#7C2D22',
+          800: '#63231B',
+          900: '#4D1B15',
+        },
+        amber: {
+          50: '#FAF6EE',
+          100: '#F2E8D5',
+          200: '#E3CFA8',
+          400: '#C49638',
+          500: '#AE8025',
+          600: '#8F6619',
+          700: '#725012',
+          800: '#593E0E',
         },
       },
       borderRadius: {

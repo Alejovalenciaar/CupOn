@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerRestaurant } from "@/api/authServices";
+import { IconCheckCircle } from "@/components/Icons";
 import type { RegisterRestaurantRequest } from "@/types";
 
 export default function RegisterRestaurantPage() {
@@ -48,7 +49,9 @@ export default function RegisterRestaurantPage() {
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
           <img src="/logo-cupon.svg" alt="CupOn" className="h-9 w-auto mx-auto mb-4" />
           <div className="bg-surface-card p-8 border border-surface-border rounded-card shadow-subtle text-center space-y-4">
-            <span className="text-4xl block">✨</span>
+            <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto">
+              <IconCheckCircle size={20} />
+            </div>
             <h2 className="text-xl font-bold text-content-primary">
               ¡Solicitud recibida con éxito!
             </h2>
@@ -115,7 +118,7 @@ export default function RegisterRestaurantPage() {
         <div className="bg-surface-card py-8 px-6 sm:px-10 border border-surface-border rounded-card shadow-subtle">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-button mb-4">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 

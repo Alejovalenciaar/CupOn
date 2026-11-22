@@ -8,24 +8,14 @@ import {
 } from "@/api/restaurantServices";
 import { useAuth } from "@/context/AuthContext";
 import { haversineKm } from "@/utils/geo";
+import { isPromotionAvailableNow } from "@/utils/schedule";
+import { CategoryIcon, IconClock, IconFlame, IconHeart, IconMapPin, IconSearch, IconTicket } from "@/components/Icons";
 import type { Category, Promotion, Restaurant } from "@/types";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CouponCard from "./components/CouponCard";
 import RestaurantCard from "./components/RestaurantCard";
 import CouponDetailModal from "./components/CouponDetailModal";
-
-// Nombre de categoría (seed V1 / DataSeeder) → emoji. Las no listadas usan 🍽️.
-const CATEGORY_EMOJIS: Record<string, string> = {
-  "Comida Rápida": "🍔",
-  "Comida Mexicana": "🌮",
-  Sushi: "🍣",
-  Postres: "🍰",
-  Bebidas: "☕",
-  "Comida Saludable": "🥗",
-  Italiana: "🍕",
-  Mariscos: "🦐",
-};
 
 const WEEK_DAYS = [
   { key: "", label: "Todos" },
@@ -88,6 +78,7 @@ export default function CatalogPage() {
     }
   });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showAvailableNowOnly, setShowAvailableNowOnly] = useState(false);
 
   // Modal detalle
   const [selected, setSelected] = useState<Promotion | null>(null);
@@ -245,9 +236,11 @@ export default function CatalogPage() {
 
   const activeCategoryName = categories.find((c) => c.id === activeCategory)?.name;
 
-  const displayedPromos = showFavoritesOnly
-    ? promotions.filter((p) => favoriteIds.includes(p.id))
-    : promotions;
+  const displayedPromos = promotions.filter((p) => {
+    if (showFavoritesOnly && !favoriteIds.includes(p.id)) return false;
+    if (showAvailableNowOnly && !isPromotionAvailableNow(p)) return false;
+    return true;
+  });
 
   const handleToggleNearby = () => {
     if (userCoords) {
@@ -321,23 +314,22 @@ export default function CatalogPage() {
         >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7 space-y-4">
-              <div className="inline-flex items-center gap-2 bg-accent-50 border border-accent-100 text-accent-700 text-xs font-semibold px-3 py-1 rounded-full">
-                <span>✨</span>
-                <span>Hospitalidad y gastronomía selecta</span>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-700">
+                Guía de beneficios gastronómicos · Colombia
+              </p>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-content-primary leading-[1.15]">
+              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-content-primary leading-[1.12]">
                 La semana sabe mejor con <span className="text-brand-600">CupOn</span>.
               </h1>
 
               <p className="text-content-secondary text-sm sm:text-base max-w-xl leading-relaxed">
-                Descubre descuentos exclusivos en tus restaurantes, cafés y bistrós preferidos. Válidos de lunes a jueves para que disfrutes cada día como el fin de semana.
+                Descuentos reales en restaurantes, cafés y barras locales. Elige tu cupón sin pagar por adelantado y preséntalo directamente en el establecimiento.
               </p>
 
               {/* Formulario de Búsqueda */}
               <form onSubmit={handleSearch} className="pt-2 max-w-lg">
                 <div className="flex items-center gap-2 bg-white border border-surface-border p-1.5 rounded-card shadow-subtle focus-within:border-brand-500 transition-colors">
-                  <span className="text-content-muted pl-2 text-sm">🔍</span>
+                  <IconSearch size={16} className="text-content-muted ml-2.5" />
                   <input
                     id="catalog-search"
                     type="text"
@@ -416,12 +408,16 @@ export default function CatalogPage() {
                   aria-pressed={isActive}
                   title={cat.description}
                   onClick={() => handleCategory(cat.id)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-button text-sm border whitespace-nowrap transition-colors ${isActive
-                      ? "bg-brand-600 border-brand-600 text-white font-medium shadow-subtle"
-                      : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-normal"
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-button text-xs sm:text-sm border whitespace-nowrap transition-colors ${isActive
+                      ? "bg-content-primary border-content-primary text-white font-semibold shadow-subtle"
+                      : "bg-white hover:bg-surface-muted text-content-secondary border-surface-border font-medium"
                     }`}
                 >
-                  <span>{CATEGORY_EMOJIS[cat.name] || "🍽️"}</span>
+                  <CategoryIcon
+                    name={cat.name}
+                    size={15}
+                    className={isActive ? "text-brand-500" : "text-content-muted"}
+                  />
                   <span>{cat.name}</span>
                 </button>
               );
@@ -468,7 +464,20 @@ export default function CatalogPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                aria-pressed={showAvailableNowOnly}
+                onClick={() => setShowAvailableNowOnly((v) => !v)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors ${
+                  showAvailableNowOnly
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
+                }`}
+              >
+                <IconClock size={13} className={showAvailableNowOnly ? "text-emerald-600" : "text-content-muted"} />
+                <span>Disponibles ahora</span>
+              </button>
               <button
                 type="button"
                 id="btn-sort-popular"
@@ -480,7 +489,7 @@ export default function CatalogPage() {
                     : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
                   }`}
               >
-                <span>🔥</span>
+                <IconFlame size={14} className={sortPopular ? "text-brand-600" : "text-content-muted"} />
                 <span>Más populares</span>
               </button>
               <button
@@ -492,10 +501,10 @@ export default function CatalogPage() {
                     : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted"
                   }`}
               >
-                <span>{showFavoritesOnly ? "❤️" : "🤍"}</span>
-                <span>Solo mis favoritos</span>
+                <IconHeart size={14} filled={showFavoritesOnly} className={showFavoritesOnly ? "text-brand-600" : "text-content-muted"} />
+                <span>Guardados</span>
                 {favoriteIds.length > 0 && (
-                  <span className="bg-brand-100 text-brand-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                  <span className="bg-brand-100 text-brand-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums">
                     {favoriteIds.length}
                   </span>
                 )}
@@ -528,7 +537,9 @@ export default function CatalogPage() {
 
           {!loadingPromos && !errorPromos && displayedPromos.length === 0 && (
             <div className="bg-surface-card border border-surface-border rounded-card p-12 text-center max-w-lg mx-auto">
-              <span className="text-3xl block mb-2">{showFavoritesOnly ? "❤️" : "🔍"}</span>
+              <div className="w-10 h-10 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center mx-auto mb-3 text-content-secondary">
+                {showFavoritesOnly ? <IconHeart size={18} /> : <IconTicket size={18} />}
+              </div>
               <h3 className="font-semibold text-content-primary text-base">
                 {showFavoritesOnly
                   ? "Aún no tienes cupones guardados"
@@ -606,11 +617,11 @@ export default function CatalogPage() {
                 aria-pressed={Boolean(userCoords)}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-button text-xs font-medium border transition-colors whitespace-nowrap ${
                   userCoords
-                    ? "bg-brand-600 border-brand-600 text-white shadow-subtle"
+                    ? "bg-content-primary border-content-primary text-white shadow-subtle"
                     : "bg-white text-content-secondary border-surface-border hover:bg-surface-muted shadow-subtle"
                 }`}
               >
-                <span>📍</span>
+                <IconMapPin size={14} />
                 <span>{locatingUser ? "Ubicando..." : userCoords ? "Cerca de mí ✓" : "Cerca de mí"}</span>
               </button>
 
