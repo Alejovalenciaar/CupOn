@@ -6,7 +6,7 @@ automáticamente por DataSeeder.java al inicializar la base de datos de desarrol
 ================================================================================
 
 --------------------------------------------------------------------------------
-1. SUPER ADMINISTRADOR (ROLE_ADMIN)
+1. SUPER ADMINISTRADOR (ROLE_ADMIN) — 1 USUARIO
 --------------------------------------------------------------------------------
 Acceso total al panel de administración: aprobación de comercios, métricas y moderación.
 
@@ -18,102 +18,87 @@ Acceso total al panel de administración: aprobación de comercios, métricas y 
                  promociones inapropiadas, ver métricas globales.
 
 --------------------------------------------------------------------------------
-2. RESTAURANTES APROBADOS (ROLE_RESTAURANTE) — 50 COMERCIOS
+2. RESTAURANTES APROBADOS (ROLE_RESTAURANTE) — 300 COMERCIOS
 --------------------------------------------------------------------------------
 Restaurantes ya aprobados por el administrador, activos en el catálogo público
-y cada uno con 200 promociones asignadas (Total: 10.000 promociones).
+y cada uno con entre 9 y 12 promociones asignadas (Total: 3.150 promociones).
 
-  - Patrón de Email:  restaurante1@cupon.com  hasta  restaurante50@cupon.com
-  - Contraseña única: Resto123*  (para los 50 restaurantes)
+  - Patrón de Email:  restaurante1@cupon.com  hasta  restaurante300@cupon.com
+  - Contraseña única: Resto123*  (para los 300 restaurantes)
   - Rol:              ROLE_RESTAURANTE
 
-Ejemplos de cuentas para iniciar sesión:
-  * restaurante1@cupon.com  / Resto123* -> Burger House (Sede Zona T, Bogotá)
-  * restaurante2@cupon.com  / Resto123* -> Taco Chingón (Sede Usaquén, Bogotá)
-  * restaurante3@cupon.com  / Resto123* -> Sakura Sushi (Sede Chapinero, Bogotá)
-  * restaurante4@cupon.com  / Resto123* -> Bella Italia (Sede Parque 93, Bogotá)
-  * restaurante5@cupon.com  / Resto123* -> Verde Vivo Bowls (Sede Cedritos, Bogotá)
-  * restaurante6@cupon.com  / Resto123* -> Dulce Pecado Bakery (Sede El Poblado, Medellín)
-  * restaurante7@cupon.com  / Resto123* -> Fuego & Carbón BBQ (Sede Provenza, Medellín)
-  * restaurante8@cupon.com  / Resto123* -> La Cervecería Capital (Sede Laureles, Medellín)
-  * restaurante9@cupon.com  / Resto123* -> Sabor Pacífico (Sede Envigado, Medellín)
-  * restaurante10@cupon.com / Resto123* -> Parrilla del Valle (Sede Granada, Cali)
-  ... hasta restaurante50@cupon.com
+Restaurantes originales conservados (1 al 8):
+  * restaurante1@cupon.com  / Resto123* -> Burger House (Zona T, Bogotá) [12 cupones]
+  * restaurante2@cupon.com  / Resto123* -> Taco Chingón (Usaquén, Bogotá) [10 cupones]
+  * restaurante3@cupon.com  / Resto123* -> Sakura Sushi Bar (Chapinero, Bogotá) [11 cupones]
+  * restaurante4@cupon.com  / Resto123* -> Bella Italia Trattoria (Parque 93, Bogotá) [9 cupones]
+  * restaurante5@cupon.com  / Resto123* -> Verde Vivo Bowls (Cedritos, Bogotá) [10 cupones]
+  * restaurante6@cupon.com  / Resto123* -> Dulce Pecado Bakery (El Poblado, Medellín) [11 cupones]
+  * restaurante7@cupon.com  / Resto123* -> Fuego & Carbón BBQ (Provenza, Medellín) [12 cupones]
+  * restaurante8@cupon.com  / Resto123* -> La Cervecería Capital (Laureles, Medellín) [9 cupones]
+  * restaurante9@cupon.com  hasta  restaurante300@cupon.com -> 292 comercios adicionales
+    distribuidos en 8 especialidades gastronómicas con entre 9 y 12 cupones cada uno.
 
-Ciudades cubiertas:
-  - Bogotá (Zona T, Usaquén, Chapinero, Parque 93, Cedritos)
-  - Medellín (El Poblado, Provenza, Laureles, Envigado)
-  - Cali (Granada, San Antonio, Ciudad Jardín)
-  - Barranquilla (El Prado, Villa Campestre)
+Ciudades y zonas gastronómicas cubiertas (24 zonas en 10 ciudades):
+  - Bogotá (Zona T, Parque 93, Usaquén, Chapinero Alto, Cedritos, Zona G, La Macarena)
+  - Medellín (El Poblado, Provenza, Laureles, Envigado, Manila)
+  - Cali (Granada, El Peñón, Ciudad Jardín, San Antonio)
+  - Barranquilla (Alto Prado, Buenavista)
   - Cartagena (Bocagrande, Getsemaní)
-  - Bucaramanga (Cabecera)
-  - Pereira (Circunvalar)
+  - Bucaramanga (Cabecera del Llano)
+  - Pereira (Pinares)
+  - Manizales (Milán)
+  - Santa Marta (Parque de los Novios)
 
 --------------------------------------------------------------------------------
-3. RESTAURANTES PENDIENTES DE APROBACIÓN (ROLE_RESTAURANTE) — 3 COMERCIOS
+3. RESTAURANTES PENDIENTES DE APROBACIÓN (ROLE_RESTAURANTE) — 12 COMERCIOS
 --------------------------------------------------------------------------------
-Comercios en estado PENDING, ideales para probar el flujo de revisión y
-aprobación/rechazo del Super Administrador (HU07 y HU08).
+Comercios en estado PENDING (conservando los 3 originales + 9 nuevos), ideales para
+probar el flujo de revisión y aprobación/rechazo del Super Administrador (HU07 y HU08).
 
-  1) Email:       pendiente1@cupon.com
-     Contraseña:  Resto123*
-     Comercio:    Arepas de la Esquina
-     Estado:      PENDING
-
-  2) Email:       pendiente2@cupon.com
-     Contraseña:  Resto123*
-     Comercio:    Waffles & Shakes
-     Estado:      PENDING
-
-  3) Email:       pendiente3@cupon.com
-     Contraseña:  Resto123*
-     Comercio:    Donas Artesanales
-     Estado:      PENDING
+  1)  pendiente1@cupon.com  / Resto123* -> Arepas de la Esquina (Bogotá)
+  2)  pendiente2@cupon.com  / Resto123* -> Waffles & Shakes Gourmet (Medellín)
+  3)  pendiente3@cupon.com  / Resto123* -> Donas Artesanales & Café (Cali)
+  4)  pendiente4@cupon.com  / Resto123* -> Asados & Leña El Retiro (Medellín)
+  5)  pendiente5@cupon.com  / Resto123* -> Marea Brava Cevichería (Bogotá)
+  6)  pendiente6@cupon.com  / Resto123* -> Kitsune Ramen & Bao House (Cali)
+  7)  pendiente7@cupon.com  / Resto123* -> San Marco Pizza Napoletana (Barranquilla)
+  8)  pendiente8@cupon.com  / Resto123* -> La Lupita Mezcalería & Tacos (Bucaramanga)
+  9)  pendiente9@cupon.com  / Resto123* -> Selva Verde Açai & Bowls (Medellín)
+  10) pendiente10@cupon.com / Resto123* -> Baluarte Taproom & Grill (Cartagena)
+  11) pendiente11@cupon.com / Resto123* -> L'Atelier du Croissant (Pereira)
+  12) pendiente12@cupon.com / Resto123* -> Bastión Smash & Fries (Bogotá)
 
 --------------------------------------------------------------------------------
-4. CLIENTE DE PRUEBA (ROLE_CLIENTE)
+4. CLIENTES DE PRUEBA (ROLE_CLIENTE) — 4 USUARIOS
 --------------------------------------------------------------------------------
-Usuario cliente regular para probar catálogo, filtros, favoritos y perfil.
+Usuarios clientes regulares conservados para probar catálogo, filtros, favoritos y canjes:
 
-  - Email:       cliente@cupon.com
-  - Contraseña:  Cliente123*
-  - Nombre:      Alejandro Gómez
-  - Teléfono:    3159998877
-  - Rol:         ROLE_CLIENTE
-  - Funciones:   Consultar catálogo, filtrar por día de semana (HU13),
-                 buscar por restaurante (HU14), marcar favoritos (HU15),
-                 ver lista de favoritos (HU16), editar su perfil (HU11).
+  1) cliente@cupon.com        / Cliente123* -> Alejandro Gómez (Bogotá)
+  2) cliente1@cupon.com       / Cliente123* -> Sofía Morales (Medellín)
+  3) cliente2@cupon.com       / Cliente123* -> Mateo Restrepo (Cali)
+  4) maria.cliente@cupon.com  / Cliente123* -> María Fernanda López (Bogotá)
 
 --------------------------------------------------------------------------------
-5. RESUMEN DE PROMOCIONES GENERADAS (10.000 CUPONES)
+5. RESUMEN DE PROMOCIONES GENERADAS (3.150 CUPONES)
 --------------------------------------------------------------------------------
-  - Total promociones:    10.000 (200 por cada restaurante aprobado).
-  - Códigos de cupón:     CUPON-00001  hasta  CUPON-10000 (únicos).
-  - Estados:              ~9.500 en estado ACTIVE (visibles en catálogo)
-                          ~500 en estado DISABLED (para probar HU20).
-  - Tipo de descuento:    Combinación entre porcentaje (% OFF) y monto fijo ($ COP).
-  - Compra mínima:        Desde $15.000 hasta $45.000 COP.
-  - Fechas de vigencia:   Iniciadas recientemente y válidas por 30 a 90 días.
-  - Días de la semana:    Rotación entre Lunes-Miércoles, Jueves-Viernes,
-                          Fines de Semana y Toda la Semana (para HU13).
-  - Imágenes:             Pool de 16 fotos gastronómicas en alta definición de Unsplash.
-
---------------------------------------------------------------------------------
-6. ¿CÓMO SE EJECUTA EL SEEDER?
---------------------------------------------------------------------------------
-El Seeder se ejecuta automáticamente al arrancar el backend en entorno local:
-
-  1. Levantar base de datos y redis:
-     docker compose up -d db redis
-
-  2. Iniciar el Backend:
-     cd backend
-     ./mvnw spring-boot:run
-
-  * Si la tabla 'users' ya tiene datos, el Seeder lo detecta e ignora la siembra
-    para evitar duplicados.
-  * Si deseas volver a sembrar todo desde cero, simplemente limpia la BD:
-     docker compose down -v
-     docker compose up -d db redis
-     ./mvnw spring-boot:run
+  - Total promociones:    3.150 cupones (entre 9 y 12 por cada uno de los 300 restaurantes).
+  - Cupones originales:   Se conservan intactos los 15 códigos clásicos (BURGER30, BBQ2X1,
+                          BURGERCOMBO, TACOS15, MARGARITA2X1, SAKURA2X1, SUSHIBOX30,
+                          PIZZA2X1, PASTALOVER, BOWLHEALTHY, SMOOTHIEFREE, DULCE20,
+                          CAFEPOSTRE, BBQRIBS, BEERHAPPY).
+  - Códigos generados:    Formato R<001..300>-<MOTIVO>-<01..12> (ej. R009-HAPPY-01).
+  - 12 Motivos de Promo:  1. Happy Hour & Tardeo (franja 15:00 - 19:00)
+                          2. Especial de Almuerzo Ejecutivo (franja 12:00 - 15:30)
+                          3. Plan Familiar de Fin de Semana ($20.000 OFF)
+                          4. Mitad de Semana con Amigos (Martes y Miércoles 30% OFF)
+                          5. Noche de Pareja & Maridaje (franja 18:00 - 22:30)
+                          6. Oferta Escalonada Flash con Precio Dinámico Simplex (22% -> 35% OFF)
+                          7. Celebración de Cumpleaños & Aniversario (35% OFF)
+                          8. Lanzamiento Especial del Chef ($14.000 OFF)
+                          9. Lunes de Antojo / Inicio de Semana (40% OFF)
+                          10. Bono de Degustación & Bienvenida ($12.000 OFF)
+                          11. After Office de Jueves y Viernes (franja 16:30 - 21:30)
+                          12. Domingo de Brunch & Familia Escalonado Simplex ($15.000 -> $22.000 OFF)
+  - Estados:              ~92% en estado ACTIVE y ~8% en estado DISABLED.
 ================================================================================
