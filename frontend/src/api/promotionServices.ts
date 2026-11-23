@@ -1,4 +1,15 @@
-import { ApiResponse, PageResponse, Promotion, CreatePromotionRequest, RedemptionResponse, RedemptionHistoryItem, Category, PromotionStats } from "@/types";
+import {
+  ApiResponse,
+  PageResponse,
+  Promotion,
+  CreatePromotionRequest,
+  RedemptionResponse,
+  RedemptionHistoryItem,
+  Category,
+  PromotionStats,
+  PricingOptimizationRequest,
+  PricingOptimizationResponse,
+} from "@/types";
 import apiClient from "./client";
 
 /**
@@ -235,6 +246,20 @@ export const verifyRedemption = async (
   const response = await apiClient.post<ApiResponse<RedemptionHistoryItem>>(
     "/promotions/redemptions/verify",
     { verificationCode }
+  );
+  return response.data.data;
+};
+
+/**
+ * Ejecuta el modelo de Programación Lineal (Método Simplex Básico) para calcular la distribución
+ * óptima de cupones entre Etapa Normal (x*) y Etapa de Última Hora (y*) (ROLE_RESTAURANTE)
+ */
+export const optimizePromotionPricing = async (
+  request: PricingOptimizationRequest
+): Promise<PricingOptimizationResponse> => {
+  const response = await apiClient.post<ApiResponse<PricingOptimizationResponse>>(
+    "/promotions/optimize-pricing",
+    request
   );
   return response.data.data;
 };

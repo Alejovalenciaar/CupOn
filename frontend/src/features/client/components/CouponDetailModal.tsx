@@ -145,12 +145,17 @@ export default function CouponDetailModal({
             ✕
           </button>
 
-          <div className="absolute bottom-3 start-3">
+          <div className="absolute bottom-3 start-3 flex items-center gap-1.5 flex-wrap">
             <span className="bg-content-primary/90 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-button shadow-subtle tabular-nums">
               {promo.discountType === 'PERCENTAGE'
                 ? `${promo.discountValue}% DE DESCUENTO`
                 : `$${Number(promo.discountValue).toLocaleString()} DE DESCUENTO`}
             </span>
+            {promo.dynamicPricingEnabled && promo.currentDynamicStage === 2 && (
+              <span className="bg-brand-600/95 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-button shadow-subtle">
+                Oferta de Última Hora
+              </span>
+            )}
           </div>
         </div>
 

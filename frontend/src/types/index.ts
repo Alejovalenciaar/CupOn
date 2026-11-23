@@ -136,6 +136,10 @@ export interface CreatePromotionRequest {
   /** Hora diaria "HH:mm"; null junto con endTime = todo el día */
   startTime?: string | null;
   endTime?: string | null;
+  dynamicPricingEnabled?: boolean;
+  stage1MaxRedemptions?: number | null;
+  stage1DiscountValue?: number | null;
+  stage2DiscountValue?: number | null;
 }
 
 export interface Promotion {
@@ -161,6 +165,11 @@ export interface Promotion {
   startTime?: string | null;
   endTime?: string | null;
   currentlyActive?: boolean;
+  dynamicPricingEnabled?: boolean;
+  stage1MaxRedemptions?: number | null;
+  stage1DiscountValue?: number | null;
+  stage2DiscountValue?: number | null;
+  currentDynamicStage?: 1 | 2 | null;
   createdAt: string;
 }
 
@@ -237,4 +246,36 @@ export interface FileUploadResponse {
   size: number; // tamaño en bytes por el backend 
   width: number;
   height: number;
+}
+
+// --- Dynamic Pricing Linear Programming (Simplex) ---
+export interface PricingOptimizationRequest {
+  regularPrice: number;
+  unitCost: number;
+  discountStage1: number;
+  discountStage2: number;
+  maxCapacity: number;
+  maxDemandStage1: number;
+  maxDiscountBudget: number;
+}
+
+export interface FeasibleVertex {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface PricingOptimizationResponse {
+  xOpt: number;
+  yOpt: number;
+  totalCoupons: number;
+  maxProfit: number;
+  u1: number;
+  u2: number;
+  d1: number;
+  d2: number;
+  s1UnusedCapacity: number;
+  s2UnmetDemandStage1: number;
+  s3RemainingBudget: number;
+  vertices: FeasibleVertex[];
 }

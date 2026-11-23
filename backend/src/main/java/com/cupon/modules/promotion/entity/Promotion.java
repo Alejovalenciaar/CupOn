@@ -94,6 +94,23 @@ public class Promotion extends BaseEntity {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    /** Indica si el cupón fue configurado con el Asesor de Precio Dinámico Escalonado (Simplex). */
+    @Column(name = "dynamic_pricing_enabled", nullable = false)
+    @Builder.Default
+    private boolean dynamicPricingEnabled = false;
+
+    /** Meta de canjes en Etapa 1 (x*). Al llegar a este número de canjes, pasa automáticamente a Etapa 2. */
+    @Column(name = "stage1_max_redemptions")
+    private Integer stage1MaxRedemptions;
+
+    /** Descuento configurado para la Etapa 1 Normal (p1). */
+    @Column(name = "stage1_discount_value", precision = 10, scale = 2)
+    private BigDecimal stage1DiscountValue;
+
+    /** Descuento configurado para la Etapa 2 Última Hora (p2). */
+    @Column(name = "stage2_discount_value", precision = 10, scale = 2)
+    private BigDecimal stage2DiscountValue;
+
     @ManyToMany
     @JoinTable(
             name = "promotion_categories",
@@ -144,5 +161,23 @@ public class Promotion extends BaseEntity {
 
     public boolean hasRedemptionsLeft() {
         return maxRedemptions <= 0 || currentRedemptions < maxRedemptions;
+    }
+
+    /**
+     * Devuelve la etapa actual del precio dinámico:
+     * null si no usa precio dinámico, 1 si está en Etapa Normal (currentRedemptions < x*),
+     * o 2 si ya alcanzó x* y pasó automáticamente a Etapa de Última Hora.
+     */
+    public Integer getCurrentDynamicStage() {
+        if (!dynamicPricingEnabled) {
+            return null;
+        }
+        if (stage1MaxRedemptions != null
+                && stage1MaxRedemptions > 0
+                && currentRedemptions >= stage1MaxRedemptions
+                && stage2DiscountValue != null) {
+            return 2;
+        }
+        return 1;
     }
 }

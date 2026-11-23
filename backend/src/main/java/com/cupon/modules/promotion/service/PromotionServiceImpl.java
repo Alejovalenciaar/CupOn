@@ -6,6 +6,8 @@ import com.cupon.common.exception.PromotionNotRedeemableException;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationResponse;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
@@ -61,15 +63,16 @@ public class PromotionServiceImpl implements PromotionService {
     private final RestaurantProfileRepository restaurantProfileRepository;
     private final UserRepository userRepository;
     private final PromotionMapper promotionMapper;
+    private final PricingOptimizationClient pricingOptimizationClient;
 
     @Override
-    @Cacheable(value = "promotions",
-            key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #sort + '_' + #pageable.pageNumber + '_' + #pageable.pageSize + '_' + #pageable.sort")
+    @Cacheable(value = "promotions", key = "'active_' + #search + '_' + #dayOfWeek + '_' + #categoryId + '_' + #sort + '_' + #pageable.pageNumber + '_' + #pageable.pageSize + '_' + #pageable.sort")
     public PageResponse<PromotionResponse> getActivePromotions(String search, DayOfWeek dayOfWeek, UUID categoryId,
             String sort, Pageable pageable) {
         String normalizedSearch = (search != null && !search.isBlank()) ? search : null;
         Page<Promotion> page = SORT_POPULAR.equalsIgnoreCase(sort)
-                // sort=popular también llega al Pageable como Sort("popular"), que no es un atributo: se descarta
+                // sort=popular también llega al Pageable como Sort("popular"), que no es un
+                // atributo: se descarta
                 ? promotionRepository.searchPopular(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
                         categoryId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()))
                 : promotionRepository.search(PromotionStatus.ACTIVE, normalizedSearch, dayOfWeek,
@@ -108,6 +111,7 @@ public class PromotionServiceImpl implements PromotionService {
             throw new DuplicateResourceException("Ya existe un cupón con el código '" + code + "'. Usa uno diferente.");
         }
 
+        boolean dynamicEnabled = Boolean.TRUE.equals(request.dynamicPricingEnabled());
         Promotion promotion = Promotion.builder()
                 .restaurantProfile(restaurant)
                 .title(request.title())
@@ -122,6 +126,10 @@ public class PromotionServiceImpl implements PromotionService {
                 .endTime(request.endTime())
                 .maxRedemptions(request.maxRedemptions())
                 .imageUrl(request.imageUrl())
+                .dynamicPricingEnabled(dynamicEnabled)
+                .stage1MaxRedemptions(dynamicEnabled ? request.stage1MaxRedemptions() : null)
+                .stage1DiscountValue(dynamicEnabled ? request.stage1DiscountValue() : null)
+                .stage2DiscountValue(dynamicEnabled ? request.stage2DiscountValue() : null)
                 .status(PromotionStatus.ACTIVE)
                 .build();
 
@@ -167,6 +175,13 @@ public class PromotionServiceImpl implements PromotionService {
         promotion.setEndTime(request.endTime());
         promotion.setMaxRedemptions(request.maxRedemptions());
         promotion.setImageUrl(request.imageUrl());
+        if (request.dynamicPricingEnabled() != null) {
+            boolean dynamicEnabled = Boolean.TRUE.equals(request.dynamicPricingEnabled());
+            promotion.setDynamicPricingEnabled(dynamicEnabled);
+            promotion.setStage1MaxRedemptions(dynamicEnabled ? request.stage1MaxRedemptions() : null);
+            promotion.setStage1DiscountValue(dynamicEnabled ? request.stage1DiscountValue() : null);
+            promotion.setStage2DiscountValue(dynamicEnabled ? request.stage2DiscountValue() : null);
+        }
 
         if (request.categoryIds() != null) {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.categoryIds()));
@@ -238,12 +253,14 @@ public class PromotionServiceImpl implements PromotionService {
     public PromotionStatsResponse getMyPromotionStats(String userEmail) {
         RestaurantProfile restaurant = getRestaurantProfile(userEmail);
         long active = 0, paused = 0, expired = 0, totalViews = 0;
-        for (PromotionRepository.StatusSummary row : promotionRepository.countByStatusForRestaurant(restaurant.getId())) {
+        for (PromotionRepository.StatusSummary row : promotionRepository
+                .countByStatusForRestaurant(restaurant.getId())) {
             switch (row.getStatus()) {
                 case ACTIVE -> active = row.getCount();
                 case DISABLED -> paused = row.getCount();
                 case EXPIRED -> expired = row.getCount();
-                default -> { }
+                default -> {
+                }
             }
             totalViews += row.getViews();
         }
@@ -295,7 +312,8 @@ public class PromotionServiceImpl implements PromotionService {
             throw new PromotionNotRedeemableException("Ya canjeaste este cupón anteriormente.");
         }
 
-        // Incremento atómico: si otro canje concurrente tomó el último cupo, aquí devuelve 0
+        // Incremento atómico: si otro canje concurrente tomó el último cupo, aquí
+        // devuelve 0
         if (promotionRepository.incrementRedemptionsIfAvailable(promotionId) == 0) {
             throw new PromotionNotRedeemableException(
                     "Este cupón ya ha sido canjeado el máximo de veces permitidas.");
@@ -312,6 +330,20 @@ public class PromotionServiceImpl implements PromotionService {
         redemptionRepository.save(redemption);
 
         int redeemedCount = promotion.getCurrentRedemptions() + 1;
+        promotion.setCurrentRedemptions(redeemedCount);
+
+        // Transición automática de Etapa 1 (Normal) a Etapa 2 (Última Hora) al alcanzar
+        // x* canjes
+        if (promotion.isDynamicPricingEnabled()
+                && promotion.getStage1MaxRedemptions() != null
+                && promotion.getStage1MaxRedemptions() > 0
+                && redeemedCount >= promotion.getStage1MaxRedemptions()
+                && promotion.getStage2DiscountValue() != null
+                && promotion.getDiscountValue().compareTo(promotion.getStage2DiscountValue()) != 0) {
+            promotion.setDiscountValue(promotion.getStage2DiscountValue());
+            promotionRepository.save(promotion);
+        }
+
         int remaining = promotion.getMaxRedemptions() > 0
                 ? Math.max(0, promotion.getMaxRedemptions() - redeemedCount)
                 : -1; // -1 = ilimitado
@@ -322,8 +354,7 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getCode(),
                 verificationCode,
                 remaining,
-                now
-        );
+                now);
     }
 
     @Override
@@ -370,6 +401,15 @@ public class PromotionServiceImpl implements PromotionService {
         return toRedemptionHistoryResponse(saved);
     }
 
+    @Override
+    public PricingOptimizationResponse optimizeDynamicPricing(PricingOptimizationRequest request) {
+        if (pricingOptimizationClient != null) {
+            return pricingOptimizationClient.optimize(request);
+        }
+        PricingOptimizationClient.validateDomain(request);
+        return PricingOptimizationClient.solveSimplex2D(request);
+    }
+
     private RedemptionHistoryResponse toRedemptionHistoryResponse(Redemption redemption) {
         Promotion promo = redemption.getPromotion();
         return new RedemptionHistoryResponse(
@@ -384,8 +424,7 @@ public class PromotionServiceImpl implements PromotionService {
                 redemption.getUser() != null ? redemption.getUser().getEmail() : null,
                 redemption.isVerified(),
                 redemption.getVerifiedAt(),
-                redemption.getRedeemedAt()
-        );
+                redemption.getRedeemedAt());
     }
 
     private String generateUniqueVerificationCode() {
@@ -402,7 +441,10 @@ public class PromotionServiceImpl implements PromotionService {
         return "CUP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
-    /** Reglas de vigencia para canjear: estado, rango de fechas, día de la semana, franja horaria y cupo. */
+    /**
+     * Reglas de vigencia para canjear: estado, rango de fechas, día de la semana,
+     * franja horaria y cupo.
+     */
     private void validateRedeemable(Promotion promotion, LocalDateTime now) {
         if (promotion.getStatus() != PromotionStatus.ACTIVE) {
             throw new PromotionNotRedeemableException("Esta promoción no está activa y no puede ser canjeada.");
@@ -414,7 +456,8 @@ public class PromotionServiceImpl implements PromotionService {
             throw new PromotionNotRedeemableException("Esta promoción ha expirado.");
         }
         if (!promotion.appliesOnDay(now.getDayOfWeek())) {
-            throw new PromotionNotRedeemableException("Esta promoción no es válida hoy. Revisa los días en que aplica.");
+            throw new PromotionNotRedeemableException(
+                    "Esta promoción no es válida hoy. Revisa los días en que aplica.");
         }
         if (!promotion.isWithinTimeWindow(now.toLocalTime())) {
             throw new PromotionNotRedeemableException(String.format(
@@ -427,7 +470,10 @@ public class PromotionServiceImpl implements PromotionService {
         }
     }
 
-    /** Códigos en mayúsculas y sin espacios; vacío se guarda como null para no chocar con la restricción única. */
+    /**
+     * Códigos en mayúsculas y sin espacios; vacío se guarda como null para no
+     * chocar con la restricción única.
+     */
     private static String normalizeCode(String code) {
         if (code == null || code.isBlank()) {
             return null;

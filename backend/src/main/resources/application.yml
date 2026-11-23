@@ -102,6 +102,9 @@ app:
     api-key: ${CLOUDINARY_API_KEY:}
     api-secret: ${CLOUDINARY_API_SECRET:}
     folder: ${CLOUDINARY_FOLDER:cupon}
+# --- optimizer (Python Simplex microservice) ---------
+  optimizer:
+    url: ${OPTIMIZER_URL:http://localhost:8000}
 
 
 # --- OpenAPI / Swagger ---

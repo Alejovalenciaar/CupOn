@@ -5,6 +5,8 @@ import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.config.SecurityConfig;
 import com.cupon.modules.auth.service.JwtService;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationResponse;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.UpdatePromotionStatusRequest;
@@ -227,6 +229,40 @@ class PromotionControllerTest {
         @WithMockUser(authorities = "ROLE_CLIENTE")
         void getMyStats_conRolCliente_devuelve403() throws Exception {
                 mockMvc.perform(get("/api/v1/promotions/mine/stats"))
+                                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(username = "resto@cupon.com", authorities = "ROLE_RESTAURANTE")
+        void optimizePricing_conRolRestaurante_devuelveSolucionSimplex() throws Exception {
+                PricingOptimizationRequest req = new PricingOptimizationRequest(
+                                40_000.0, 20_000.0, 0.10, 0.25, 120.0, 70.0, 680_000.0);
+                PricingOptimizationResponse resp = new PricingOptimizationResponse(
+                                70.0, 40.0, 110.0, 1_520_000.0,
+                                16_000.0, 10_000.0, 4_000.0, 10_000.0,
+                                10.0, 0.0, 0.0, List.of());
+
+                when(promotionService.optimizeDynamicPricing(any())).thenReturn(resp);
+
+                mockMvc.perform(post("/api/v1/promotions/optimize-pricing")
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(req)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data.xOpt").value(70.0))
+                                .andExpect(jsonPath("$.data.yOpt").value(40.0))
+                                .andExpect(jsonPath("$.data.maxProfit").value(1_520_000.0));
+        }
+
+        @Test
+        @WithMockUser(authorities = "ROLE_CLIENTE")
+        void optimizePricing_conRolCliente_devuelve403() throws Exception {
+                PricingOptimizationRequest req = new PricingOptimizationRequest(
+                                40_000.0, 20_000.0, 0.10, 0.25, 120.0, 70.0, 680_000.0);
+
+                mockMvc.perform(post("/api/v1/promotions/optimize-pricing")
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(req)))
                                 .andExpect(status().isForbidden());
         }
 

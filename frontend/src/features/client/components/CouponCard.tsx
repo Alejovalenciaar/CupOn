@@ -67,8 +67,13 @@ export default function CouponCard({
           <IconHeart size={15} filled={isFavorite} />
         </button>
 
-        {/* Estado secundario (urgencia / novedad) */}
+        {/* Estado secundario (urgencia / novedad / última hora dinámica) */}
         <div className="absolute top-2.5 end-2.5 flex flex-col items-end gap-1">
+          {!isExpired && promo.dynamicPricingEnabled && promo.currentDynamicStage === 2 && (
+            <span className="bg-brand-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-button shadow-subtle">
+              Última Hora · Dcto. Mejorado
+            </span>
+          )}
           {isLowStock && (
             <span className="bg-red-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-button shadow-subtle tabular-nums">
               Últimos {remaining}

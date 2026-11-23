@@ -16,6 +16,7 @@ import { ImageUploader } from "@/components/ImageUpLoader";
 import RestaurantMap from "@/components/RestaurantMap";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import RedemptionValidatorTab from "./components/RedemptionValidatorTab";
+import DynamicPricingOptimizer from "./components/DynamicPricingOptimizer";
 import { downloadCsv } from "@/utils/csv";
 import {
   IconChart,
@@ -150,6 +151,10 @@ export default function RestaurantDashboard({
     maxRedemptions: 100,
     imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
     daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
+    dynamicPricingEnabled: false,
+    stage1MaxRedemptions: null,
+    stage1DiscountValue: null,
+    stage2DiscountValue: null,
   });
 
   useEffect(() => {
@@ -257,6 +262,10 @@ export default function RestaurantDashboard({
       maxRedemptions: 100,
       imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=250&fit=crop",
       daysOfWeek: [], categoryIds: [], startTime: "", endTime: "",
+      dynamicPricingEnabled: false,
+      stage1MaxRedemptions: null,
+      stage1DiscountValue: null,
+      stage2DiscountValue: null,
     });
     setIsPromoModalOpen(true);
   };
@@ -283,6 +292,10 @@ export default function RestaurantDashboard({
         : undefined,
       startTime: promo.startTime ? promo.startTime.slice(0, 5) : "",
       endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
+      dynamicPricingEnabled: Boolean(promo.dynamicPricingEnabled),
+      stage1MaxRedemptions: promo.stage1MaxRedemptions ?? null,
+      stage1DiscountValue: promo.stage1DiscountValue ?? null,
+      stage2DiscountValue: promo.stage2DiscountValue ?? null,
     });
     setIsPromoModalOpen(true);
   };
@@ -307,6 +320,10 @@ export default function RestaurantDashboard({
         : [],
       startTime: promo.startTime ? promo.startTime.slice(0, 5) : "",
       endTime: promo.endTime ? promo.endTime.slice(0, 5) : "",
+      dynamicPricingEnabled: Boolean(promo.dynamicPricingEnabled),
+      stage1MaxRedemptions: promo.stage1MaxRedemptions ?? null,
+      stage1DiscountValue: promo.stage1DiscountValue ?? null,
+      stage2DiscountValue: promo.stage2DiscountValue ?? null,
     });
     setIsPromoModalOpen(true);
   };
@@ -712,6 +729,17 @@ export default function RestaurantDashboard({
                                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-button flex-shrink-0 ${getPromoStatusMeta(promo.status).listCls}`}>
                                     {getPromoStatusMeta(promo.status).label}
                                   </span>
+                                  {promo.dynamicPricingEnabled && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-button bg-brand-50 text-brand-700 border border-brand-200 flex-shrink-0">
+                                      <IconSparkles size={10} />
+                                      <span>
+                                        Precio Dinámico
+                                        {promo.currentDynamicStage === 2
+                                          ? " · Etapa 2 (Última Hora)"
+                                          : " · Etapa 1 (Normal)"}
+                                      </span>
+                                    </span>
+                                  )}
                                 </div>
                                 <span className="text-[11px] text-content-secondary flex-shrink-0 ml-2 inline-flex items-center gap-1 tabular-nums">
                                   <IconEye size={13} className="text-content-muted" />
@@ -801,11 +829,51 @@ export default function RestaurantDashboard({
 
                           {/* Cuerpo */}
                           <div className="p-4 flex-1 space-y-2">
-                            <span className="inline-block font-mono text-[10px] bg-surface-muted border border-surface-border text-content-secondary px-2 py-0.5 rounded-button">
-                              {promo.code}
-                            </span>
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="inline-block font-mono text-[10px] bg-surface-muted border border-surface-border text-content-secondary px-2 py-0.5 rounded-button">
+                                {promo.code}
+                              </span>
+                              {promo.dynamicPricingEnabled && (
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-button border ${
+                                    promo.currentDynamicStage === 2
+                                      ? "bg-amber-50 text-amber-800 border-amber-200"
+                                      : "bg-brand-50 text-brand-700 border-brand-200"
+                                  }`}
+                                >
+                                  <IconSparkles size={11} />
+                                  <span>
+                                    {promo.currentDynamicStage === 2
+                                      ? "Precio Dinámico · Etapa 2 (Última Hora)"
+                                      : "Precio Dinámico · Etapa 1 (Normal)"}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                             <p className="font-semibold text-sm text-content-primary leading-tight">{promo.title}</p>
                             <p className="text-xs text-content-secondary line-clamp-2">{promo.description || "Sin descripción."}</p>
+
+                            {promo.dynamicPricingEnabled && promo.stage1MaxRedemptions != null && promo.stage1MaxRedemptions > 0 && (
+                              <div className="bg-surface-muted/80 border border-surface-border rounded-button p-2 text-[11px] space-y-1">
+                                <div className="flex items-center justify-between text-content-secondary">
+                                  <span>
+                                    {promo.currentDynamicStage === 2
+                                      ? "✓ Etapa 1 completada · Activa Etapa 2"
+                                      : `Meta Etapa 1 (${promo.stage1DiscountValue ?? promo.discountValue}% OFF):`}
+                                  </span>
+                                  <strong className="text-content-primary font-mono tabular-nums">
+                                    {Math.min(promo.currentRedemptions || 0, promo.stage1MaxRedemptions)}/{promo.stage1MaxRedemptions} canjes
+                                  </strong>
+                                </div>
+                                {promo.stage2DiscountValue != null && (
+                                  <span className="block text-[10px] text-content-muted">
+                                    {promo.currentDynamicStage === 2
+                                      ? `Aplicando descuento automático de Última Hora (${promo.stage2DiscountValue}% OFF).`
+                                      : `Al llegar a ${promo.stage1MaxRedemptions} canjes pasará automáticamente a Etapa 2 (${promo.stage2DiscountValue}% OFF).`}
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             <div className="flex justify-between text-[11px] text-content-muted pt-1">
                               <span>Canjes: <strong className="text-content-primary">{promo.currentRedemptions || 0}/{promo.maxRedemptions || "∞"}</strong></span>
@@ -1144,6 +1212,30 @@ export default function RestaurantDashboard({
                   </div>
                 </div>
               </div>
+
+              {/* Asesor de Precio Dinámico Escalonado */}
+              <DynamicPricingOptimizer
+                onApplyStage={({
+                  discountType,
+                  discountValue,
+                  maxRedemptions,
+                  dynamicPricingEnabled,
+                  stage1MaxRedemptions,
+                  stage1DiscountValue,
+                  stage2DiscountValue,
+                }) => {
+                  setPromoForm((prev) => ({
+                    ...prev,
+                    discountType,
+                    discountValue,
+                    maxRedemptions,
+                    dynamicPricingEnabled,
+                    stage1MaxRedemptions,
+                    stage1DiscountValue,
+                    stage2DiscountValue,
+                  }));
+                }}
+              />
 
               <form onSubmit={handleSavePromo} className="space-y-4">
                 <Field label="Título del cupón / oferta *">

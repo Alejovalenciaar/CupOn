@@ -3,6 +3,8 @@ package com.cupon.modules.promotion.controller;
 import com.cupon.common.dto.ApiResponse;
 import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationResponse;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
@@ -247,5 +249,22 @@ public class PromotionController {
                 RedemptionHistoryResponse response = promotionService.verifyRedemption(
                                 authentication.getName(), request.verificationCode());
                 return ResponseEntity.ok(ApiResponse.success("Canje validado correctamente en caja", response));
+        }
+
+        @PostMapping("/optimize-pricing")
+        @PreAuthorize("hasAuthority('ROLE_RESTAURANTE')")
+        @Operation(summary = "Calcular distribución óptima de cupones por etapas con Programación Lineal / Simplex (restaurante)")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Solución óptima calculada exitosamente"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Parámetros del modelo lineal inválidos"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "El usuario no tiene rol de restaurante")
+        })
+        public ResponseEntity<ApiResponse<PricingOptimizationResponse>> optimizePricing(
+                        @Valid @RequestBody PricingOptimizationRequest request) {
+                PricingOptimizationResponse response = promotionService.optimizeDynamicPricing(request);
+                return ResponseEntity.ok(ApiResponse.success(
+                                "Distribución óptima calculada mediante Programación Lineal (Método Simplex)",
+                                response));
         }
 }

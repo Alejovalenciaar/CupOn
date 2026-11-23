@@ -6,6 +6,8 @@ import com.cupon.common.exception.PromotionNotRedeemableException;
 import com.cupon.common.exception.ResourceNotFoundException;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationResponse;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.entity.Category;
@@ -723,5 +725,71 @@ class PromotionServiceImplTest {
         assertThatThrownBy(() -> promotionService.redeemPromotion(promotion.getId()))
                 .isInstanceOf(PromotionNotRedeemableException.class);
         verify(promotionRepository, never()).incrementRedemptionsIfAvailable(any());
+    }
+
+    @Test
+    void optimizeDynamicPricing_casoBaseDocumento_resuelveSimplexExacto() {
+        PricingOptimizationRequest req = new PricingOptimizationRequest(
+                40_000.0,
+                20_000.0,
+                0.10,
+                0.25,
+                120.0,
+                70.0,
+                680_000.0
+        );
+
+        PricingOptimizationResponse res = promotionService.optimizeDynamicPricing(req);
+
+        assertThat(res.xOpt()).isEqualTo(70.0);
+        assertThat(res.yOpt()).isEqualTo(40.0);
+        assertThat(res.totalCoupons()).isEqualTo(110.0);
+        assertThat(res.maxProfit()).isEqualTo(1_520_000.0);
+        assertThat(res.u1()).isEqualTo(16_000.0);
+        assertThat(res.u2()).isEqualTo(10_000.0);
+        assertThat(res.d1()).isEqualTo(4_000.0);
+        assertThat(res.d2()).isEqualTo(10_000.0);
+        assertThat(res.s1UnusedCapacity()).isEqualTo(10.0);
+        assertThat(res.s2UnmetDemandStage1()).isEqualTo(0.0);
+        assertThat(res.s3RemainingBudget()).isEqualTo(0.0);
+        assertThat(res.vertices()).hasSizeGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void optimizeDynamicPricing_descuentoNoRentable_lanzaIllegalArgumentException() {
+        PricingOptimizationRequest req = new PricingOptimizationRequest(
+                40_000.0,
+                30_000.0,
+                0.10,
+                0.30,
+                100.0,
+                50.0,
+                500_000.0
+        );
+
+        assertThatThrownBy(() -> promotionService.optimizeDynamicPricing(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("pérdida o utilidad nula");
+    }
+
+    @Test
+    void redeemPromotion_alcanzaMetaEtapa1_pasaAutomaticamenteAEtapa2() {
+        Promotion promotion = buildRedeemablePromotion();
+        promotion.setDynamicPricingEnabled(true);
+        promotion.setStage1MaxRedemptions(70);
+        promotion.setStage1DiscountValue(BigDecimal.valueOf(10));
+        promotion.setStage2DiscountValue(BigDecimal.valueOf(25));
+        promotion.setDiscountValue(BigDecimal.valueOf(10));
+        promotion.setMaxRedemptions(110);
+        promotion.setCurrentRedemptions(69); // El próximo canje es el #70 (x* = 70)
+
+        when(promotionRepository.findById(promotion.getId())).thenReturn(Optional.of(promotion));
+        when(promotionRepository.incrementRedemptionsIfAvailable(promotion.getId())).thenReturn(1);
+
+        promotionService.redeemPromotion(promotion.getId());
+
+        assertThat(promotion.getDiscountValue()).isEqualByComparingTo(BigDecimal.valueOf(25));
+        assertThat(promotion.getCurrentDynamicStage()).isEqualTo(2);
+        verify(promotionRepository).save(promotion);
     }
 }

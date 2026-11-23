@@ -3,6 +3,8 @@ package com.cupon.modules.promotion.service;
 import com.cupon.common.dto.PageResponse;
 import com.cupon.modules.promotion.dto.CategoryResponse;
 import com.cupon.modules.promotion.dto.CreatePromotionRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationRequest;
+import com.cupon.modules.promotion.dto.PricingOptimizationResponse;
 import com.cupon.modules.promotion.dto.PromotionResponse;
 import com.cupon.modules.promotion.dto.PromotionStatsResponse;
 import com.cupon.modules.promotion.dto.RedemptionHistoryResponse;
@@ -69,4 +71,10 @@ public interface PromotionService {
 
     /** Valida en caja el código único de verificación de un canje perteneciente al restaurante. */
     RedemptionHistoryResponse verifyRedemption(String userEmail, String verificationCode);
+
+    /**
+     * Ejecuta el modelo de Programación Lineal (Método Simplex Básico) para calcular la distribución
+     * óptima de cupones entre Etapa Normal (x*) y Etapa de Última Hora (y*).
+     */
+    PricingOptimizationResponse optimizeDynamicPricing(PricingOptimizationRequest request);
 }
