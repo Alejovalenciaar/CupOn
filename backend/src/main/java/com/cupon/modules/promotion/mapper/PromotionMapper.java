@@ -15,7 +15,10 @@ public interface PromotionMapper {
 
     @Mapping(target = "restaurantName", source = "restaurantProfile.businessName")
     @Mapping(target = "restaurantId", source = "restaurantProfile.id")
+    @Mapping(target = "restaurantInstagramUrl", source = "restaurantProfile.instagramUrl")
     @Mapping(target = "categories", source = "categories", qualifiedByName = "categoriesToNames")
+    @Mapping(target = "currentlyActive", expression = "java(promotion.isCurrentlyActive())")
+    @Mapping(target = "currentDynamicStage", expression = "java(promotion.getCurrentDynamicStage())")
     PromotionResponse toResponse(Promotion promotion);
 
     @Named("categoriesToNames")

@@ -1,7 +1,9 @@
 package com.cupon.modules.promotion.entity;
 
 import com.cupon.common.entity.BaseEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,7 +21,9 @@ import lombok.Setter;
 import com.cupon.modules.user.entity.RestaurantProfile;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -62,6 +66,13 @@ public class Promotion extends BaseEntity {
     @Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
 
+    /** Hora diaria de inicio de la franja. Null junto con endTime = aplica todo el día. */
+    @Column(name = "start_time")
+    private LocalTime startTime;
+
+    @Column(name = "end_time")
+    private LocalTime endTime;
+
     @Column(name = "max_redemptions")
     @Builder.Default
     private int maxRedemptions = 0;
@@ -69,6 +80,11 @@ public class Promotion extends BaseEntity {
     @Column(name = "current_redemptions")
     @Builder.Default
     private int currentRedemptions = 0;
+
+    /** Veces que se ha consultado el detalle (GET /promotions/{id}). Se incrementa en BD de forma atómica. */
+    @Column(name = "view_count", nullable = false)
+    @Builder.Default
+    private long viewCount = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -78,6 +94,23 @@ public class Promotion extends BaseEntity {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    /** Indica si el cupón fue configurado con el Asesor de Precio Dinámico Escalonado (Simplex). */
+    @Column(name = "dynamic_pricing_enabled", nullable = false)
+    @Builder.Default
+    private boolean dynamicPricingEnabled = false;
+
+    /** Meta de canjes en Etapa 1 (x*). Al llegar a este número de canjes, pasa automáticamente a Etapa 2. */
+    @Column(name = "stage1_max_redemptions")
+    private Integer stage1MaxRedemptions;
+
+    /** Descuento configurado para la Etapa 1 Normal (p1). */
+    @Column(name = "stage1_discount_value", precision = 10, scale = 2)
+    private BigDecimal stage1DiscountValue;
+
+    /** Descuento configurado para la Etapa 2 Última Hora (p2). */
+    @Column(name = "stage2_discount_value", precision = 10, scale = 2)
+    private BigDecimal stage2DiscountValue;
+
     @ManyToMany
     @JoinTable(
             name = "promotion_categories",
@@ -86,4 +119,65 @@ public class Promotion extends BaseEntity {
     )
     @Builder.Default
     private Set<Category> categories = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "promotion_days",
+            joinColumns = @JoinColumn(name = "promotion_id")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day_of_week", length = 20)
+    @Builder.Default
+    private Set<DayOfWeek> daysOfWeek = new HashSet<>();
+
+    /**
+     * Determina si el instante dado cae dentro del período de vigencia (inicio y fin inclusive).
+     * Punto único de comparación temporal para no duplicar esta lógica en distintas capas.
+     */
+    public boolean isWithinSchedule(LocalDateTime reference) {
+        return !reference.isBefore(startDate) && !reference.isAfter(endDate);
+    }
+
+    public boolean isCurrentlyActive(LocalDateTime reference) {
+        return status == PromotionStatus.ACTIVE && isWithinSchedule(reference);
+    }
+
+    public boolean isCurrentlyActive() {
+        return isCurrentlyActive(LocalDateTime.now());
+    }
+
+    /** Sin días configurados la promoción aplica todos los días. */
+    public boolean appliesOnDay(DayOfWeek day) {
+        return daysOfWeek == null || daysOfWeek.isEmpty() || daysOfWeek.contains(day);
+    }
+
+    /** Sin franja configurada (ambas horas nulas) la promoción aplica todo el día. Inicio inclusive, fin exclusive. */
+    public boolean isWithinTimeWindow(LocalTime time) {
+        if (startTime == null || endTime == null) {
+            return true;
+        }
+        return !time.isBefore(startTime) && time.isBefore(endTime);
+    }
+
+    public boolean hasRedemptionsLeft() {
+        return maxRedemptions <= 0 || currentRedemptions < maxRedemptions;
+    }
+
+    /**
+     * Devuelve la etapa actual del precio dinámico:
+     * null si no usa precio dinámico, 1 si está en Etapa Normal (currentRedemptions < x*),
+     * o 2 si ya alcanzó x* y pasó automáticamente a Etapa de Última Hora.
+     */
+    public Integer getCurrentDynamicStage() {
+        if (!dynamicPricingEnabled) {
+            return null;
+        }
+        if (stage1MaxRedemptions != null
+                && stage1MaxRedemptions > 0
+                && currentRedemptions >= stage1MaxRedemptions
+                && stage2DiscountValue != null) {
+            return 2;
+        }
+        return 1;
+    }
 }

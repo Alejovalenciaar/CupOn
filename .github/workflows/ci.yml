@@ -2,9 +2,9 @@ name: CI Pipeline Spring Boot
 
 on:
   push:
-    branches: [ main, develop, Alejo ]
+    branches: [ main, Developer, develop, Alejo ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, Developer ]
 
 jobs:
   build:

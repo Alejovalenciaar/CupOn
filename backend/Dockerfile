@@ -7,12 +7,17 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn package -DskipTests -B
 
-# Stage 2: Run with lightweight JRE
-FROM eclipse-temurin:21-jre-alpine
+# Stage 2: Run with JRE
+# NOTA: no se usa la variante -alpine. Las librerías nativas del motor de
+# embeddings locales (DJL/PyTorch, para Spring AI Transformers) están
+# compiladas contra glibc y fallan en Alpine (musl libc) con
+# "Error loading shared library libstdc++.so.6" al no existir una variante
+# musl de esas librerías nativas.
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup -S cupon && adduser -S cupon -G cupon
+RUN groupadd -r cupon && useradd -r -g cupon cupon
 USER cupon
 
 COPY --from=builder /app/target/*.jar app.jar

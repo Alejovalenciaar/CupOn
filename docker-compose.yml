@@ -34,6 +34,21 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # --- Microservicio de Optimización (Python / FastAPI + SciPy Simplex) ---
+  optimizer:
+    build:
+      context: ./optimizer
+      dockerfile: Dockerfile
+    container_name: cupon-optimizer
+    expose:
+      - "8000"
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
   # --- Backend (Spring Boot) ---
   backend:
     build:
@@ -48,15 +63,34 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET_CUPON: ${JWT_SECRET_CUPON}
-      JWT_EXPIRATION_CUPON: ${JWT_EXPIRATION_CUPON}
+      JWT_SECRET_CUPON: ${JWT_SECRET_CUPON:-${JWT_SECRET:-changeme}}
+      JWT_EXPIRATION_CUPON: ${JWT_EXPIRATION_CUPON:-${JWT_EXPIRATION:-86400000}}
+      JWT_SECRET: ${JWT_SECRET:-${JWT_SECRET_CUPON:-changeme}}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-${JWT_EXPIRATION_CUPON:-86400000}}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      PASSWORD_RESET_EXPIRATION_MINUTES: ${PASSWORD_RESET_EXPIRATION_MINUTES:-30}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       SPRING_PROFILES_ACTIVE: prod
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-cupon}
+      OPTIMIZER_URL: ${OPTIMIZER_URL:-http://optimizer:8000}
+
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      optimizer:
         condition: service_healthy
     restart: unless-stopped
 

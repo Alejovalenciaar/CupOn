@@ -32,6 +32,17 @@ export interface RegisterRestaurantRequest extends RegisterClientRequest {
   businessName: string;
   description?: string;
   address: string;
+  instagramUrl?: string;
+}
+
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
 }
 
 export interface AuthResponse {
@@ -51,20 +62,86 @@ export interface User {
   createdAt: string;
 }
 
+
+export interface UserProfileResponse {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  role: string;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface UpdateUserRequest {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+}
+
+export interface UpdateRestaurantRequest {
+  businessName?: string;
+  cuisineType?: string;
+  description?: string;
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  logoUrl?: string;
+  phoneNumber?: string;
+  instagramUrl?: string;
+}
+
 // --- Restaurant ---
 export interface Restaurant {
   id: string;
   businessName: string;
   description: string;
+  cuisineType?: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl: string;
   phoneNumber: string;
+  instagramUrl?: string | null;
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string | null;
+  userId?: string;
+  ownerEnabled?: boolean;
   ownerName: string;
   createdAt: string;
 }
 
 // --- Promotion ---
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface CreatePromotionRequest {
+  title: string;
+  description?: string;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED_AMOUNT";
+  discountValue: number;
+  minPurchase?: number;
+  startDate: string;
+  endDate: string;
+  maxRedemptions?: number;
+  imageUrl?: string;
+  categoryIds?: string[];
+  daysOfWeek?: string[];
+  /** Hora diaria "HH:mm"; null junto con endTime = todo el día */
+  startTime?: string | null;
+  endTime?: string | null;
+  dynamicPricingEnabled?: boolean;
+  stage1MaxRedemptions?: number | null;
+  stage1DiscountValue?: number | null;
+  stage2DiscountValue?: number | null;
+}
+
 export interface Promotion {
   id: string;
   title: string;
@@ -77,19 +154,128 @@ export interface Promotion {
   endDate: string;
   maxRedemptions: number;
   currentRedemptions: number;
+  viewCount: number;
   status: 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   imageUrl: string;
   restaurantName: string;
   restaurantId: string;
+  restaurantInstagramUrl?: string | null;
   categories: string[];
+  daysOfWeek?: string[];
+  startTime?: string | null;
+  endTime?: string | null;
+  currentlyActive?: boolean;
+  dynamicPricingEnabled?: boolean;
+  stage1MaxRedemptions?: number | null;
+  stage1DiscountValue?: number | null;
+  stage2DiscountValue?: number | null;
+  currentDynamicStage?: 1 | 2 | null;
   createdAt: string;
 }
 
 // --- Admin ---
+export interface ApproveRestaurantRequest {
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export interface TopRestaurantMetric {
+  restaurantId: string;
+  businessName: string;
+  cuisineType?: string;
+  activePromotions: number;
+  totalRedemptions: number;
+}
+
 export interface SystemMetrics {
   totalUsers: number;
   totalRestaurants: number;
   pendingApprovals: number;
   totalPromotions: number;
   activePromotions: number;
+  totalRedemptions?: number;
+  topRestaurants?: TopRestaurantMetric[];
+}
+
+// --- Redemption ---
+export interface PromotionStats {
+  active: number;
+  paused: number;
+  expired: number;
+  totalViews: number;
+}
+
+export interface RedemptionResponse {
+  promotionId: string;
+  promotionTitle: string;
+  code: string;
+  verificationCode: string;
+  remainingRedemptions: number; // -1 = ilimitado
+  redeemedAt: string;
+}
+
+export interface RedemptionHistoryItem {
+  id: string;
+  promotionId: string;
+  promotionTitle: string;
+  restaurantName: string;
+  code: string;
+  verificationCode: string;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountValue: number;
+  customerEmail?: string | null;
+  verified: boolean;
+  verifiedAt?: string | null;
+  redeemedAt: string;
+}
+
+// --- Chatbot ---
+export interface ChatRequest {
+  pregunta: string;
+}
+
+export interface ChatResponse {
+  respuesta: string;
+}
+
+// ---- Files / Upload ----
+export interface FileUploadResponse {
+  url: string;
+  publicId: string;
+  format: string;
+  size: number; // tamaño en bytes por el backend 
+  width: number;
+  height: number;
+}
+
+// --- Dynamic Pricing Linear Programming (Simplex) ---
+export interface PricingOptimizationRequest {
+  regularPrice: number;
+  unitCost: number;
+  discountStage1: number;
+  discountStage2: number;
+  maxCapacity: number;
+  maxDemandStage1: number;
+  maxDiscountBudget: number;
+}
+
+export interface FeasibleVertex {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface PricingOptimizationResponse {
+  xOpt: number;
+  yOpt: number;
+  totalCoupons: number;
+  maxProfit: number;
+  u1: number;
+  u2: number;
+  d1: number;
+  d2: number;
+  s1UnusedCapacity: number;
+  s2UnmetDemandStage1: number;
+  s3RemainingBudget: number;
+  vertices: FeasibleVertex[];
 }

@@ -8,6 +8,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface RestaurantMapper {
 
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "ownerEnabled", source = "user.enabled")
     @Mapping(target = "ownerName",
             expression = "java(profile.getUser().getFirstName() + \" \" + profile.getUser().getLastName())")
     RestaurantResponse toResponse(RestaurantProfile profile);

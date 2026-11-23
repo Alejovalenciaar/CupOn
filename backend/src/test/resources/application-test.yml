@@ -16,7 +16,15 @@ spring:
     redis:
       host: localhost
       port: 6379
+  ai:
+    openai:
+      api-key: "dummy-test-api-key"
 
 app:
   jwt:
     secret: "un_secreto_super_largo_y_seguro_para_pruebas_que_no_importa_para_nada"
+  cloudinary:
+    cloud-name: test
+    api-key: test
+    api-secret: test
+    folder: cupon-test
