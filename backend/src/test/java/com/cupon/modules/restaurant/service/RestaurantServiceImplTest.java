@@ -275,6 +275,25 @@ class RestaurantServiceImplTest {
     }
 
     @Test
+    void updateMyRestaurant_cuandoEstabaRechazado_vuelveAPendienteYLimpiaMotivo() {
+        User owner = buildUser();
+        RestaurantProfile profile = buildProfile(owner, ApprovalStatus.REJECTED);
+        profile.setRejectionReason("Dirección incompleta");
+        UpdateRestaurantDto request = new UpdateRestaurantDto(null, null, null, "Calle 100 # 15-20", null, null, null, null);
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(owner));
+        when(restaurantProfileRepository.findByUserId(owner.getId())).thenReturn(Optional.of(profile));
+        when(restaurantProfileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(restaurantMapper.toResponse(any())).thenReturn(buildResponse(profile));
+
+        restaurantService.updateMyRestaurant(userEmail, request);
+
+        assertThat(profile.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING);
+        assertThat(profile.getRejectionReason()).isNull();
+        verify(restaurantProfileRepository).save(profile);
+    }
+
+    @Test
     void updateMyRestaurant_usuarioInexistente_lanzaResourceNotFoundException() {
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.empty());
 

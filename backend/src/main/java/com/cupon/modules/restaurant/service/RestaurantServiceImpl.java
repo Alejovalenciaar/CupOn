@@ -85,8 +85,16 @@ public class RestaurantServiceImpl implements RestaurantService {
                         profile.setLogoUrl(request.logoUrl());
                 if (request.phoneNumber() != null)
                         profile.setPhoneNumber(request.phoneNumber());
+                if (request.instagramUrl() != null)
+                        profile.setInstagramUrl(request.instagramUrl());
                 if (request.cuisineType() != null)
                         profile.setCuisineType(request.cuisineType());
+
+                // Si el restaurante había sido rechazado y corrige sus datos, vuelve a cola de revisión
+                if (profile.getApprovalStatus() == ApprovalStatus.REJECTED) {
+                        profile.setApprovalStatus(ApprovalStatus.PENDING);
+                        profile.setRejectionReason(null);
+                }
 
                 RestaurantProfile saved = restaurantProfileRepository.save(profile);
                 return restaurantMapper.toResponse(saved);

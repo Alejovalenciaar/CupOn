@@ -131,7 +131,7 @@ export default function RestaurantDashboard({
   // Profile form
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UpdateRestaurantRequest>({
-    businessName: "", cuisineType: "", description: "", address: "", latitude: null, longitude: null, phoneNumber: "", logoUrl: "",
+    businessName: "", cuisineType: "", description: "", address: "", latitude: null, longitude: null, phoneNumber: "", instagramUrl: "", logoUrl: "",
   });
 
   // Promo modal
@@ -180,6 +180,7 @@ export default function RestaurantDashboard({
         latitude: restData.latitude ?? 4.6768,
         longitude: restData.longitude ?? -74.0482,
         phoneNumber: restData.phoneNumber || "",
+        instagramUrl: restData.instagramUrl || "",
         logoUrl: restData.logoUrl || "",
       });
     } catch {
@@ -228,10 +229,15 @@ export default function RestaurantDashboard({
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
+    const wasRejected = restaurantData?.approvalStatus === "REJECTED";
     try {
       const updated = await updateMyRestaurant(profileForm);
       setRestaurantData(updated);
-      showToast("Información del restaurante actualizada.");
+      showToast(
+        wasRejected
+          ? "Datos corregidos y enviados nuevamente a revisión."
+          : "Información del restaurante actualizada."
+      );
       onCatalogNeedsRefresh?.();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Error al actualizar.", "error");
@@ -401,12 +407,18 @@ export default function RestaurantDashboard({
     }
   };
 
-  // Métricas calculadas
+  // Métricas calculadas (operativas y comerciales en $ COP)
   const totalRedemptions = promotions.reduce((s, p) => s + (p.currentRedemptions || 0), 0);
   const totalCapacity = promotions.reduce((s, p) => s + (p.maxRedemptions || 0), 0);
   const redemptionRate = totalCapacity > 0 ? Math.round((totalRedemptions / totalCapacity) * 100) : 0;
   const totalViews = stats?.totalViews ?? 0;
   const viewConversion = totalViews > 0 ? Math.round((totalRedemptions / totalViews) * 100) : 0;
+  const verifiedRedemptions = redemptions.filter((r) => r.verified).length;
+  const showRate = redemptions.length > 0 ? Math.round((verifiedRedemptions / redemptions.length) * 100) : 0;
+  const estimatedMinRevenue = promotions.reduce(
+    (s, p) => s + Number(p.minPurchase || 0) * (p.currentRedemptions || 0),
+    0
+  );
   const bestPromo = [...promotions].sort((a, b) => (b.currentRedemptions || 0) - (a.currentRedemptions || 0))[0];
 
   const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -417,6 +429,7 @@ export default function RestaurantDashboard({
   ];
 
   const isApproved = restaurantData?.approvalStatus === "APPROVED";
+  const isRejected = restaurantData?.approvalStatus === "REJECTED";
 
   return (
     <div className="min-h-screen bg-surface-canvas text-content-primary antialiased flex flex-col">
@@ -447,9 +460,11 @@ export default function RestaurantDashboard({
               <span className={`ml-2 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-button border ${
                 isApproved
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : isRejected
+                  ? "bg-red-50 text-red-700 border-red-200"
                   : "bg-amber-50 text-amber-700 border-amber-200"
               }`}>
-                {isApproved ? "Verificado" : "Pendiente"}
+                {isApproved ? "Verificado" : isRejected ? "Rechazado" : "Pendiente"}
               </span>
             </div>
           </div>
@@ -522,15 +537,19 @@ export default function RestaurantDashboard({
               <div className={`mx-2 px-3 py-2 rounded-button border text-xs ${
                 isApproved
                   ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : isRejected
+                  ? "bg-red-50 border-red-200 text-red-700"
                   : "bg-amber-50 border-amber-200 text-amber-700"
               }`}>
                 <div className="flex items-center gap-1.5 font-semibold">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isApproved ? "bg-emerald-500" : "bg-amber-400"}`} />
-                  {isApproved ? "Aprobado y activo" : "Pendiente de revisión"}
+                  <span className={`w-1.5 h-1.5 rounded-full ${isApproved ? "bg-emerald-500" : isRejected ? "bg-red-500" : "bg-amber-400"}`} />
+                  {isApproved ? "Aprobado y activo" : isRejected ? "Solicitud rechazada" : "Pendiente de revisión"}
                 </div>
                 <p className="mt-0.5 text-[11px] opacity-80 leading-relaxed">
                   {isApproved
                     ? "Tus cupones son visibles en el catálogo."
+                    : isRejected
+                    ? restaurantData?.rejectionReason || "Corrige los datos de tu perfil para reenviar."
                     : "El equipo revisará tus datos en 24–48 h."}
                 </p>
               </div>
@@ -553,6 +572,30 @@ export default function RestaurantDashboard({
                 : "bg-red-50 border-red-200 text-red-700"
             }`}>
               {toast.msg}
+            </div>
+          )}
+
+          {/* Alerta de rechazo con motivo de moderación y CTA para corregir */}
+          {!loading && isRejected && (
+            <div className="bg-red-50 border border-red-200 rounded-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-red-800 uppercase tracking-wider">
+                  Tu solicitud de afiliación requiere correcciones
+                </p>
+                <p className="text-xs text-red-700 leading-relaxed">
+                  <strong className="font-semibold">Motivo indicado por moderación:</strong>{" "}
+                  {restaurantData?.rejectionReason || "Verifica que el nombre comercial, dirección y teléfono sean válidos."}
+                </p>
+              </div>
+              {activeTab !== "profile" && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("profile")}
+                  className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3.5 py-2 rounded-button transition-colors shadow-subtle"
+                >
+                  Corregir perfil y reenviar
+                </button>
+              )}
             </div>
           )}
 
@@ -610,11 +653,24 @@ export default function RestaurantDashboard({
                     ))}
                   </div>
 
-                  {/* KPIs de rendimiento */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {/* KPIs de rendimiento y retorno comercial ($ COP) */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: "Canjes totales", value: totalRedemptions, sub: "clientes que redimieron" },
-                      { label: "Tasa de redención", value: `${redemptionRate}%`, sub: "sobre el límite total" },
+                      {
+                        label: "Facturación mín. estimada",
+                        value: `$${estimatedMinRevenue.toLocaleString()}`,
+                        sub: "COP por consumo mínimo exigido",
+                      },
+                      {
+                        label: "Asistencia a mesa",
+                        value: `${verifiedRedemptions}/${redemptions.length}`,
+                        sub: `${showRate}% validados en caja`,
+                      },
+                      {
+                        label: "Canjes totales",
+                        value: totalRedemptions,
+                        sub: `${redemptionRate}% del cupo total`,
+                      },
                       {
                         label: "Top cupón",
                         value: bestPromo ? bestPromo.code : "—",
@@ -837,14 +893,24 @@ export default function RestaurantDashboard({
                     <div className={`flex items-start gap-3 p-3 rounded-button border text-xs ${
                       isApproved
                         ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        : isRejected
+                        ? "bg-red-50 border-red-200 text-red-800"
                         : "bg-amber-50 border-amber-200 text-amber-800"
                     }`}>
-                      <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${isApproved ? "bg-emerald-500" : "bg-amber-500"}`} />
+                      <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${isApproved ? "bg-emerald-500" : isRejected ? "bg-red-500" : "bg-amber-500"}`} />
                       <div>
-                        <p className="font-semibold">{isApproved ? "Aprobado y visible en el catálogo" : "Pendiente de validación"}</p>
-                        <p className="opacity-75 mt-0.5">
+                        <p className="font-semibold">
+                          {isApproved
+                            ? "Aprobado y visible en el catálogo"
+                            : isRejected
+                            ? "Solicitud rechazada — guarda cambios para reenviar a revisión"
+                            : "Pendiente de validación"}
+                        </p>
+                        <p className="opacity-80 mt-0.5">
                           {isApproved
                             ? "Tu restaurante es visible para todos los usuarios de CupOn."
+                            : isRejected
+                            ? `Motivo: ${restaurantData?.rejectionReason || "Revisa tus datos comerciales y vuelve a guardar."}`
                             : "El equipo de CupOn revisará tu perfil en las próximas 24–48 horas."}
                         </p>
                       </div>
@@ -893,6 +959,19 @@ export default function RestaurantDashboard({
                           />
                         </Field>
                       </div>
+
+                      <Field
+                        label="Instagram / Red social del restaurante"
+                        hint="Puedes ingresar tu usuario (@mirestaurante) o el enlace completo (https://instagram.com/mirestaurante)."
+                      >
+                        <input
+                          type="text"
+                          placeholder="Ej. @mirestaurante o https://www.instagram.com/mirestaurante"
+                          className={inputCls}
+                          value={profileForm.instagramUrl || ""}
+                          onChange={(e) => setProfileForm({ ...profileForm, instagramUrl: e.target.value })}
+                        />
+                      </Field>
 
                       {/* Geolocalización en Mapa (HU25) */}
                       <div className="space-y-3 pt-1">

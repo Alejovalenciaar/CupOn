@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Promotion, RedemptionResponse } from '@/types';
 import { redeemPromotion, registerPromotionView } from '@/api/promotionServices';
-import { IconCheckCircle, IconHeart, IconLink } from '@/components/Icons';
+import { useAuth } from '@/context/AuthContext';
+import { IconCheckCircle, IconHeart, IconInstagram, IconLink, normalizeInstagramUrl } from '@/components/Icons';
 import VerificationQrPass from '@/components/VerificationQrPass';
 import ActiveDaysPills from './ActiveDaysPills';
 
@@ -43,6 +45,8 @@ export default function CouponDetailModal({
   onClose,
   onToggleFavorite,
 }: CouponDetailModalProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
   const [redeemLoading, setRedeemLoading] = useState(false);
@@ -95,7 +99,7 @@ export default function CouponDetailModal({
   };
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
-  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  const instagramUrl = normalizeInstagramUrl(promo.restaurantInstagramUrl, promo.restaurantName);
 
   const handleRedeem = async () => {
     setRedeemLoading(true);
@@ -229,13 +233,22 @@ export default function CouponDetailModal({
                   </div>
                 </div>
               )}
+              <div className="pt-1 text-right">
+                <Link
+                  to="/redemptions"
+                  onClick={onClose}
+                  className="text-xs font-semibold text-emerald-800 hover:underline"
+                >
+                  Ver todos mis pases en Mis Canjes →
+                </Link>
+              </div>
             </div>
           ) : (
             <>
               <div className="border border-dashed border-brand-500 bg-brand-50/50 rounded-card px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <span className="text-[11px] text-brand-700 font-medium block">
-                    Código de canje
+                    Código de referencia
                   </span>
                   <div className="font-mono text-lg font-bold tracking-widest text-brand-700">
                     {promo.code}
@@ -254,6 +267,21 @@ export default function CouponDetailModal({
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-card text-center">
                   Este cupón ya no está disponible para canje.
                 </div>
+              ) : !user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/login');
+                  }}
+                  className="w-full bg-content-primary hover:bg-brand-600 text-white font-semibold px-4 py-2.5 rounded-button text-xs sm:text-sm transition-colors shadow-subtle flex items-center justify-center gap-2"
+                >
+                  <span>Inicia sesión para obtener tu pase QR →</span>
+                </button>
+              ) : user.role !== 'ROLE_CLIENTE' ? (
+                <div className="bg-surface-muted border border-surface-border text-content-secondary text-xs p-2.5 rounded-button text-center">
+                  Vista previa · El reclamo de pases QR está reservado para cuentas de comensal.
+                </div>
               ) : (
                 <div className="space-y-2">
                   {redeemError && (
@@ -267,7 +295,7 @@ export default function CouponDetailModal({
                     disabled={redeemLoading}
                     className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium px-4 py-2.5 rounded-button text-sm transition-colors shadow-subtle flex items-center justify-center gap-2"
                   >
-                    {redeemLoading ? 'Validando canje...' : 'Confirmar canje en local'}
+                    {redeemLoading ? 'Generando pase QR...' : 'Obtener pase QR para canjear en local'}
                   </button>
                 </div>
               )}
@@ -295,12 +323,14 @@ export default function CouponDetailModal({
                 WhatsApp
               </a>
               <a
-                href={facebookUrl}
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={shareButtonClass}
+                className={`${shareButtonClass} gap-1.5`}
+                title={`Visitar Instagram de ${promo.restaurantName}`}
               >
-                Facebook
+                <IconInstagram size={13} />
+                <span>Instagram</span>
               </a>
             </div>
           </div>

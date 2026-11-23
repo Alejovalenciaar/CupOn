@@ -203,7 +203,8 @@ public class PromotionController {
         }
 
         @PostMapping("/{id}/redeem")
-        @Operation(summary = "Canjear un cupón y generar código de verificación")
+        @PreAuthorize("hasAuthority('ROLE_CLIENTE')")
+        @Operation(summary = "Canjear un cupón y generar código de verificación (cliente)")
         @ApiResponses({
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cupón canjeado exitosamente"),
                         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Promoción no encontrada"),

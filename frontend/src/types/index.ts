@@ -32,6 +32,7 @@ export interface RegisterRestaurantRequest extends RegisterClientRequest {
   businessName: string;
   description?: string;
   address: string;
+  instagramUrl?: string;
 }
 
 
@@ -88,6 +89,7 @@ export interface UpdateRestaurantRequest {
   longitude?: number | null;
   logoUrl?: string;
   phoneNumber?: string;
+  instagramUrl?: string;
 }
 
 // --- Restaurant ---
@@ -101,7 +103,9 @@ export interface Restaurant {
   longitude?: number | null;
   logoUrl: string;
   phoneNumber: string;
+  instagramUrl?: string | null;
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string | null;
   userId?: string;
   ownerEnabled?: boolean;
   ownerName: string;
@@ -151,6 +155,7 @@ export interface Promotion {
   imageUrl: string;
   restaurantName: string;
   restaurantId: string;
+  restaurantInstagramUrl?: string | null;
   categories: string[];
   daysOfWeek?: string[];
   startTime?: string | null;

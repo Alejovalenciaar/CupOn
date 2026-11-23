@@ -16,6 +16,7 @@ import Footer from "./components/Footer";
 import CouponCard from "./components/CouponCard";
 import RestaurantCard from "./components/RestaurantCard";
 import CouponDetailModal from "./components/CouponDetailModal";
+import CuratedListsSection from "./components/CuratedListsSection";
 
 const WEEK_DAYS = [
   { key: "", label: "Todos" },
@@ -83,6 +84,7 @@ export default function CatalogPage() {
   // Modal detalle
   const [selected, setSelected] = useState<Promotion | null>(null);
   const [sharedError, setSharedError] = useState<string | null>(null);
+  const [visiblePromoLimit, setVisiblePromoLimit] = useState(4);
 
   // ── Carga inicial ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -132,6 +134,7 @@ export default function CatalogPage() {
         setPromotions(d.content);
         setPromoPage(d.page);
         setHasMorePromos(!d.last);
+        setVisiblePromoLimit(4);
         setActiveSearch(q || "");
         setActiveDay(dow || "");
         setActiveCategory(cat || "");
@@ -571,7 +574,7 @@ export default function CatalogPage() {
           {!loadingPromos && !errorPromos && displayedPromos.length > 0 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {displayedPromos.map((promo) => (
+                {displayedPromos.slice(0, visiblePromoLimit).map((promo) => (
                   <CouponCard
                     key={promo.id}
                     promo={promo}
@@ -581,21 +584,69 @@ export default function CatalogPage() {
                   />
                 ))}
               </div>
-              {hasMorePromos && !showFavoritesOnly && (
-                <div className="flex justify-center pt-2">
-                  <button
-                    type="button"
-                    onClick={handleLoadMorePromotions}
-                    disabled={loadingMorePromos}
-                    className="bg-white hover:bg-surface-muted disabled:opacity-50 text-content-primary font-medium text-xs sm:text-sm px-5 py-2.5 rounded-button border border-surface-border transition-colors shadow-subtle"
-                  >
-                    {loadingMorePromos ? "Cargando..." : "Cargar más cupones"}
-                  </button>
+              {(displayedPromos.length > visiblePromoLimit || (hasMorePromos && !showFavoritesOnly) || visiblePromoLimit > 4) && (
+                <div className="flex items-center justify-center gap-3 pt-1">
+                  <div className="h-px flex-1 bg-surface-border max-w-[140px]" />
+                  {(displayedPromos.length > visiblePromoLimit || (hasMorePromos && !showFavoritesOnly)) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextLimit = visiblePromoLimit + 4;
+                        setVisiblePromoLimit(nextLimit);
+                        if (nextLimit > displayedPromos.length && hasMorePromos && !loadingMorePromos) {
+                          handleLoadMorePromotions();
+                        }
+                      }}
+                      disabled={loadingMorePromos}
+                      className="inline-flex items-center gap-2 bg-white hover:bg-surface-muted disabled:opacity-50 text-content-primary font-semibold text-xs px-5 py-2 rounded-full border border-surface-border hover:border-brand-300 transition-all shadow-subtle"
+                    >
+                      <span>
+                        {loadingMorePromos
+                          ? "Cargando..."
+                          : `Ver más cupones${
+                              displayedPromos.length > visiblePromoLimit
+                                ? ` (${displayedPromos.length - visiblePromoLimit} más)`
+                                : ""
+                            }`}
+                      </span>
+                      <span className="text-brand-600 text-xs">↓</span>
+                    </button>
+                  )}
+                  {visiblePromoLimit > 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setVisiblePromoLimit(4)}
+                      className="inline-flex items-center gap-1.5 text-content-secondary hover:text-content-primary font-medium text-xs px-3 py-2 rounded-full transition-colors"
+                    >
+                      <span>Ver menos ↑</span>
+                    </button>
+                  )}
+                  <div className="h-px flex-1 bg-surface-border max-w-[140px]" />
                 </div>
               )}
             </>
           )}
         </section>
+
+        {/* ── SELECCIONES CURADAS (ESTILO RESY: POPULARES · MEJOR VALORADOS · NUEVOS) ── */}
+        {!loadingRest && !errorRest && restaurants.length > 0 && (
+          <CuratedListsSection
+            restaurants={restaurants}
+            promotions={promotions}
+            favoriteRestaurantIds={favoriteRestaurantIds}
+            onToggleFavoriteRestaurant={handleToggleFavoriteRestaurant}
+            onViewAllPopular={() => {
+              fetchPromotions(undefined, undefined, undefined, true);
+              document.getElementById("cupones")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            onViewAllTopRated={() => {
+              document.getElementById("restaurantes")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            onViewAllNew={() => {
+              document.getElementById("restaurantes")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+        )}
 
         {/* ── RESTAURANTES ALIADOS ───────────────────────────────────────────── */}
         <section id="restaurantes" className="space-y-4 pt-6">
@@ -698,12 +749,14 @@ export default function CatalogPage() {
                   userCoords && restaurant.latitude != null && restaurant.longitude != null
                     ? haversineKm(userCoords.lat, userCoords.lng, restaurant.latitude, restaurant.longitude)
                     : null;
+                const activePromoCount = promotions.filter((p) => p.restaurantId === restaurant.id).length;
                 return (
                   <RestaurantCard
                     key={restaurant.id}
                     restaurant={restaurant}
                     isFavorite={favoriteRestaurantIds.includes(restaurant.id)}
                     distanceKm={distanceKm}
+                    activePromoCount={activePromoCount}
                     onToggleFavorite={handleToggleFavoriteRestaurant}
                     onFilterPromotions={(name) => {
                       setSearchTerm(name);

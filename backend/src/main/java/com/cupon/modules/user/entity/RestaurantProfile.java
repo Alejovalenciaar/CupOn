@@ -52,6 +52,9 @@ public class RestaurantProfile extends BaseEntity {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
+    @Column(name = "instagram_url", length = 500)
+    private String instagramUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", nullable = false, length = 20)
     @Builder.Default

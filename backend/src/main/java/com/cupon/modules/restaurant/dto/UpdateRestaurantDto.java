@@ -23,5 +23,19 @@ public record UpdateRestaurantDto(
 
                 @Size(max = 500) String logoUrl,
 
-                @Size(max = 20) String phoneNumber) {
+                @Size(max = 20) String phoneNumber,
+
+                @Size(max = 500) String instagramUrl) {
+
+        public UpdateRestaurantDto(
+                        String businessName,
+                        String description,
+                        String cuisineType,
+                        String address,
+                        Double latitude,
+                        Double longitude,
+                        String logoUrl,
+                        String phoneNumber) {
+                this(businessName, description, cuisineType, address, latitude, longitude, logoUrl, phoneNumber, null);
+        }
 }

@@ -29,6 +29,19 @@ public record RegisterRestaurantRequest(
 
         @NotBlank(message = "La dirección es obligatoria")
         @Size(max = 500)
-        String address
+        String address,
+
+        @Size(max = 500)
+        String instagramUrl
 ) {
+        public RegisterRestaurantRequest(
+                        String email,
+                        String password,
+                        String firstName,
+                        String lastName,
+                        String businessName,
+                        String description,
+                        String address) {
+                this(email, password, firstName, lastName, businessName, description, address, null);
+        }
 }

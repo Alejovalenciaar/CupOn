@@ -189,6 +189,24 @@ export const IconTrophy = ({ size = 14, className, ...p }: IconProps) => (
   </svg>
 );
 
+export const IconZap = ({ size = 16, className, ...p }: IconProps) => (
+  <svg {...base(size, className)} {...p}>
+    <path d="M13 2 4.5 13.5h6.5L10 22l9.5-11.5h-6.5L13 2Z" />
+  </svg>
+);
+
+export const IconStar = ({ size = 11, className, ...p }: IconProps) => (
+  <svg
+    {...base(size, className)}
+    fill="currentColor"
+    stroke="currentColor"
+    strokeWidth={1.2}
+    {...p}
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
 export const IconAlert = ({ size = 15, className, ...p }: IconProps) => (
   <svg {...base(size, className)} {...p}>
     <circle cx="12" cy="12" r="9" />
@@ -326,3 +344,50 @@ export const CategoryIcon = ({
   // Todos / Cubiertos minimalistas
   return <IconUtensils size={size} className={className} />;
 };
+
+export const IconInstagram = ({ size = 16, className = "" }: IconProps) => (
+  <svg {...base(size, className)}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
+
+/**
+ * Convierte un usuario (@restaurante o restaurante) o URL en un enlace válido de Instagram.
+ */
+export function normalizeInstagramUrl(raw?: string | null, fallbackName?: string): string {
+  const cleaned = (raw || "").trim();
+  if (cleaned) {
+    if (/^https?:\/\//i.test(cleaned)) return cleaned;
+    const handle = cleaned
+      .replace(/^@/, "")
+      .replace(/^(www\.)?instagram\.com\//i, "")
+      .replace(/\/+$/, "");
+    if (handle) return `https://www.instagram.com/${handle}`;
+  }
+  if (fallbackName) {
+    const slug = fallbackName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (slug) return `https://www.instagram.com/${slug}`;
+  }
+  return "https://www.instagram.com/";
+}
+
+/**
+ * Extrae el handle legible (@restaurante) a partir de una URL o usuario de Instagram.
+ */
+export function formatInstagramHandle(raw?: string | null, fallbackName?: string): string {
+  const cleaned = (raw || "").trim();
+  if (cleaned) {
+    const handle = cleaned
+      .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+      .replace(/^@/, "")
+      .split(/[/?#]/)[0];
+    if (handle) return `@${handle}`;
+  }
+  if (fallbackName) {
+    const slug = fallbackName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (slug) return `@${slug}`;
+  }
+  return "Instagram";
+}

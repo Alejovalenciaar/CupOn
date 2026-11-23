@@ -2,13 +2,22 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Restaurant } from '@/types';
 import { formatDistance } from '@/utils/geo';
-import { IconArrowRight, IconHeart, IconMapPin, IconPhone } from '@/components/Icons';
+import {
+  formatInstagramHandle,
+  IconArrowRight,
+  IconHeart,
+  IconInstagram,
+  IconMapPin,
+  IconPhone,
+  normalizeInstagramUrl,
+} from '@/components/Icons';
 import RestaurantMap from '@/components/RestaurantMap';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
   isFavorite?: boolean;
   distanceKm?: number | null;
+  activePromoCount?: number;
   onToggleFavorite?: (id: string, e: React.MouseEvent) => void;
   onFilterPromotions: (restaurantName: string) => void;
 }
@@ -17,6 +26,7 @@ export default function RestaurantCard({
   restaurant,
   isFavorite = false,
   distanceKm = null,
+  activePromoCount = 0,
   onToggleFavorite,
   onFilterPromotions,
 }: RestaurantCardProps) {
@@ -43,6 +53,11 @@ export default function RestaurantCard({
             <span className="bg-content-primary/90 text-white text-[11px] font-semibold px-2 py-0.5 rounded-button shadow-subtle inline-flex items-center gap-1 tabular-nums">
               <IconMapPin size={12} />
               <span>{formatDistance(distanceKm)}</span>
+            </span>
+          )}
+          {activePromoCount > 0 && (
+            <span className="bg-brand-600/95 text-white text-[11px] font-semibold px-2 py-0.5 rounded-button shadow-subtle tabular-nums">
+              {activePromoCount} {activePromoCount === 1 ? 'oferta' : 'ofertas'}
             </span>
           )}
         </div>
@@ -94,12 +109,27 @@ export default function RestaurantCard({
               {showMap ? 'Ocultar mapa' : 'Mapa'}
             </button>
           </div>
-          {restaurant.phoneNumber && (
-            <div className="flex items-center gap-1.5 truncate tabular-nums">
-              <IconPhone size={13} className="text-content-muted" />
-              <span className="truncate">{restaurant.phoneNumber}</span>
-            </div>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            {restaurant.phoneNumber && (
+              <div className="flex items-center gap-1.5 truncate tabular-nums">
+                <IconPhone size={13} className="text-content-muted" />
+                <span className="truncate">{restaurant.phoneNumber}</span>
+              </div>
+            )}
+            <a
+              href={normalizeInstagramUrl(restaurant.instagramUrl, restaurant.businessName)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:text-brand-800 hover:underline truncate"
+              title={`Visitar Instagram de ${restaurant.businessName}`}
+            >
+              <IconInstagram size={12} className="text-brand-600 shrink-0" />
+              <span className="truncate">
+                {formatInstagramHandle(restaurant.instagramUrl, restaurant.businessName)}
+              </span>
+            </a>
+          </div>
         </div>
 
         {showMap && (

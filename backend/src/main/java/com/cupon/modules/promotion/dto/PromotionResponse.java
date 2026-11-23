@@ -26,6 +26,7 @@ public record PromotionResponse(
         String imageUrl,
         String restaurantName,
         UUID restaurantId,
+        String restaurantInstagramUrl,
         Set<String> categories,
         LocalDateTime createdAt,
         Set<DayOfWeek> daysOfWeek,
@@ -34,4 +35,32 @@ public record PromotionResponse(
         boolean currentlyActive,
         long viewCount
 ) {
+        public PromotionResponse(
+                        UUID id,
+                        String title,
+                        String description,
+                        String code,
+                        DiscountType discountType,
+                        BigDecimal discountValue,
+                        BigDecimal minPurchase,
+                        LocalDateTime startDate,
+                        LocalDateTime endDate,
+                        int maxRedemptions,
+                        int currentRedemptions,
+                        PromotionStatus status,
+                        String imageUrl,
+                        String restaurantName,
+                        UUID restaurantId,
+                        Set<String> categories,
+                        LocalDateTime createdAt,
+                        Set<DayOfWeek> daysOfWeek,
+                        LocalTime startTime,
+                        LocalTime endTime,
+                        boolean currentlyActive,
+                        long viewCount) {
+                this(id, title, description, code, discountType, discountValue, minPurchase,
+                                startDate, endDate, maxRedemptions, currentRedemptions, status,
+                                imageUrl, restaurantName, restaurantId, null, categories, createdAt,
+                                daysOfWeek, startTime, endTime, currentlyActive, viewCount);
+        }
 }

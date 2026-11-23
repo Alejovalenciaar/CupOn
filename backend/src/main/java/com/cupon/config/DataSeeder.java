@@ -538,6 +538,8 @@ public class DataSeeder implements CommandLineRunner {
                     .build();
             user = userRepository.save(user);
 
+            String defaultHandle = "https://www.instagram.com/"
+                    + businessName.toLowerCase().replaceAll("[^a-z0-9]", "");
             RestaurantProfile profile = RestaurantProfile.builder()
                     .user(user)
                     .businessName(businessName)
@@ -546,6 +548,7 @@ public class DataSeeder implements CommandLineRunner {
                     .latitude(address.contains("Medellín") ? 6.2091 : 4.6768)
                     .longitude(address.contains("Medellín") ? -75.5678 : -74.0482)
                     .phoneNumber(phone)
+                    .instagramUrl(defaultHandle)
                     .logoUrl(logoUrl)
                     .approvalStatus(status)
                     .build();
@@ -559,7 +562,16 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.save(user);
 
             final User existingUser = user;
+            final String defaultHandle = "https://www.instagram.com/"
+                    + businessName.toLowerCase().replaceAll("[^a-z0-9]", "");
             return restaurantProfileRepository.findByUserId(user.getId())
+                    .map(existingProfile -> {
+                        if (existingProfile.getInstagramUrl() == null || existingProfile.getInstagramUrl().isBlank()) {
+                            existingProfile.setInstagramUrl(defaultHandle);
+                            return restaurantProfileRepository.save(existingProfile);
+                        }
+                        return existingProfile;
+                    })
                     .orElseGet(() -> {
                         RestaurantProfile profile = RestaurantProfile.builder()
                                 .user(existingUser)
@@ -567,6 +579,7 @@ public class DataSeeder implements CommandLineRunner {
                                 .description(description)
                                 .address(address)
                                 .phoneNumber(phone)
+                                .instagramUrl(defaultHandle)
                                 .logoUrl(logoUrl)
                                 .approvalStatus(status)
                                 .build();

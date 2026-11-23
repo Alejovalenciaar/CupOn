@@ -103,6 +103,7 @@ public class AuthServiceImpl implements AuthService {
                 .businessName(request.businessName())
                 .description(request.description())
                 .address(request.address())
+                .instagramUrl(request.instagramUrl())
                 .build();
         restaurantProfileRepository.save(profile);
 

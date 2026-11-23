@@ -3,7 +3,16 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getRestaurantById, toggleFavoriteRestaurant, getMyFavoriteRestaurants } from "@/api/restaurantServices";
 import { getPromotions, toggleFavorite, getMyFavorites } from "@/api/promotionServices";
 import { useAuth } from "@/context/AuthContext";
-import { IconArrowLeft, IconHeart, IconMapPin, IconPhone } from "@/components/Icons";
+import {
+  formatInstagramHandle,
+  IconArrowLeft,
+  IconHeart,
+  IconInstagram,
+  IconMapPin,
+  IconPhone,
+  IconShare,
+  normalizeInstagramUrl,
+} from "@/components/Icons";
 import type { Promotion, Restaurant } from "@/types";
 import RestaurantMap from "@/components/RestaurantMap";
 import CouponCard from "./components/CouponCard";
@@ -193,6 +202,59 @@ export default function RestaurantDetailPage() {
                           <span className="truncate">{restaurant.phoneNumber}</span>
                         </div>
                       )}
+                      <a
+                        href={normalizeInstagramUrl(restaurant.instagramUrl, restaurant.businessName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-surface-muted hover:bg-brand-50/70 border border-surface-border hover:border-brand-200 rounded-button px-3 py-2 flex items-center gap-2 text-content-primary hover:text-brand-700 transition-colors"
+                      >
+                        <IconInstagram size={14} className="text-brand-600 shrink-0" />
+                        <span className="truncate font-medium">
+                          {formatInstagramHandle(restaurant.instagramUrl, restaurant.businessName)}
+                        </span>
+                      </a>
+                    </div>
+
+                    {/* Acciones directas de contacto y navegación */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <a
+                        href={
+                          restaurant.latitude != null && restaurant.longitude != null
+                            ? `https://www.google.com/maps/search/?api=1&query=${restaurant.latitude},${restaurant.longitude}`
+                            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                `${restaurant.businessName} ${restaurant.address}`
+                              )}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-primary bg-surface-canvas hover:bg-surface-muted border border-surface-border px-3 py-1.5 rounded-button transition-colors"
+                      >
+                        <IconMapPin size={13} className="text-brand-600" />
+                        <span>Cómo llegar (Google Maps)</span>
+                        <IconShare size={12} className="text-content-muted" />
+                      </a>
+                      {restaurant.phoneNumber && (
+                        <a
+                          href={`https://wa.me/${restaurant.phoneNumber.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                            `Hola, vi las ofertas de ${restaurant.businessName} en CupOn y me gustaría consultar disponibilidad.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-button transition-colors"
+                        >
+                          <IconPhone size={13} />
+                          <span>Escribir por WhatsApp</span>
+                        </a>
+                      )}
+                      <a
+                        href={normalizeInstagramUrl(restaurant.instagramUrl, restaurant.businessName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-3 py-1.5 rounded-button transition-colors"
+                      >
+                        <IconInstagram size={13} />
+                        <span>Ver Instagram</span>
+                      </a>
                     </div>
                   </div>
 
