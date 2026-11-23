@@ -30,7 +30,7 @@ interface AdminDashboardProps {
   onCatalogNeedsRefresh?: () => void;
 }
 
-type Tab = "metrics" | "pending" | "restaurants" | "moderation";
+type Tab = "dashboard" | "metrics" | "pending" | "restaurants" | "moderation";
 
 export default function AdminDashboard({
   currentUser,
@@ -42,7 +42,7 @@ export default function AdminDashboard({
   onSwitchToCustomerView = () => { window.location.href = "/"; },
   onCatalogNeedsRefresh,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("metrics");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [pendingRestaurants, setPendingRestaurants] = useState<Restaurant[]>([]);
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
@@ -192,6 +192,7 @@ export default function AdminDashboard({
   };
 
   const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <IconChart size={16} /> },
     { id: "metrics", label: "Métricas del sistema", icon: <IconChart size={16} /> },
     { id: "pending", label: "Solicitudes pendientes", icon: <IconClock size={16} />, badge: pendingRestaurants.length },
     { id: "restaurants", label: "Directorio de locales", icon: <IconStore size={16} /> },
@@ -310,6 +311,26 @@ export default function AdminDashboard({
             </div>
           ) : (
             <>
+              {activeTab === "dashboard" && (
+                <section className="space-y-5">
+                  <div>
+                    <h1 className="text-xl font-bold text-content-primary">Dashboard</h1>
+                    <p className="text-xs text-content-secondary mt-0.5">
+                      Visualización de analítica de la plataforma
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-card border border-surface-border bg-white shadow-subtle">
+                    <iframe
+                      title="Cupon"
+                      className="h-[70vh] min-h-[480px] w-full"
+                      src="https://app.powerbi.com/view?r=eyJrIjoiMjhjYWQ4ZjgtN2EyMi00N2JmLTg3YWItNTU0NmU0MWM1Y2IwIiwidCI6IjlkMTJiZjNmLWU0ZjYtNDdhYi05MTJmLTFhMmYwZmM0OGFhNCIsImMiOjR9"
+                      allowFullScreen
+                    />
+                  </div>
+                </section>
+              )}
+
               {/* ── MÉTRICAS ──────────────────────────────────────────────── */}
               {activeTab === "metrics" && (
                 <div className="space-y-6">
