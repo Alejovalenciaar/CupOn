@@ -81,6 +81,6 @@ public record CreatePromotionRequest(
     public boolean isFranjaHorariaValida() {
         if (startTime == null && endTime == null)
             return true;
-
+        return startTime != null && endTime != null && startTime.isBefore(endTime);
     }
 }
